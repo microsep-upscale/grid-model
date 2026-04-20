@@ -5,3 +5,4 @@
 **/*.mod
 **/test_*
 !**/*.f90
+**/.ipynb_checkpoints
