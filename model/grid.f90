@@ -1,182 +1,164 @@
 program grid_model
 
-  implicit none
+    use coeff_io
 
-  integer :: number_block, dt, i, degree, gradient
-  integer :: deg1, deg2, deg3, deg4
+    implicit none
 
-  real(8) :: rho, mu, rho_rec, K, mu_rec, rho_last
-  real(8) :: block_size, system_size, time_step, init_mu
-  real(8) :: left_mu, right_mu
+    integer :: number_block, dt, i, degree, gradient
+    integer :: deg1, deg2, deg3, deg4
 
-  real(8), allocatable :: x_axis(:)
-  real(8), allocatable :: chemical_potential(:)
-  real(8), allocatable :: fluid_density(:)
-  real(8), allocatable :: permeability(:)
-  real(8), allocatable :: flux(:)
-  real(8), allocatable :: new_chemical_potential(:)
-  real(8), allocatable :: new_fluid_density(:)
+    real(8) :: rho, mu, rho_rec, K, mu_rec, rho_last
+    real(8) :: block_size, system_size, time_step, init_mu
+    real(8) :: left_mu, right_mu
 
-  real(8), allocatable :: maniac_mu_rho_coeffs(:)
-  real(8), allocatable :: maniac_rho_mu_coeffs(:)
-  real(8), allocatable :: nemd_k_mu_coeffs(:)
-  real(8), allocatable :: nemd_mu_k_coeffs(:)
+    real(8), allocatable :: x_axis(:)
+    real(8), allocatable :: chemical_potential(:)
+    real(8), allocatable :: fluid_density(:)
+    real(8), allocatable :: permeability(:)
+    real(8), allocatable :: flux(:)
+    real(8), allocatable :: new_chemical_potential(:)
+    real(8), allocatable :: new_fluid_density(:)
 
-  ! ===============================
-  ! Load coefficients
-  ! ===============================
-  call load_coeffs("input/maniac_mu_rho_coeffs.dat", maniac_mu_rho_coeffs, deg1)
-  call load_coeffs("input/maniac_rho_mu_coeffs.dat", maniac_rho_mu_coeffs, deg2)
-  call load_coeffs("input/nemd_k_mu_coeffs.dat", nemd_k_mu_coeffs, deg3)
-  call load_coeffs("input/nemd_mu_k_coeffs.dat", nemd_mu_k_coeffs, deg4)
+    real(8), allocatable :: maniac_mu_rho_coeffs(:)
+    real(8), allocatable :: maniac_rho_mu_coeffs(:)
+    real(8), allocatable :: nemd_k_mu_coeffs(:)
+    real(8), allocatable :: nemd_mu_k_coeffs(:)
 
-  ! ===============================
-  ! Test section
-  ! ===============================
-  rho = 200.0d0
-  print *, "rho =", rho
+    ! ===============================
+    ! Load coefficients
+    ! ===============================
+    call load_coeffs("input/maniac_mu_rho_coeffs.dat", maniac_mu_rho_coeffs, deg1)
+    call load_coeffs("input/maniac_rho_mu_coeffs.dat", maniac_rho_mu_coeffs, deg2)
+    call load_coeffs("input/nemd_k_mu_coeffs.dat", nemd_k_mu_coeffs, deg3)
+    call load_coeffs("input/nemd_mu_k_coeffs.dat", nemd_mu_k_coeffs, deg4)
 
-  mu = poly_fit(rho, maniac_mu_rho_coeffs, deg1)
-  print *, "mu =", mu
+    ! ===============================
+    ! Test section
+    ! ===============================
+    rho = 200.0d0
+    print *, "rho =", rho
 
-  rho_rec = poly_fit(mu, maniac_rho_mu_coeffs, deg2)
-  print *, "rho_rec =", rho_rec
+    mu = poly_fit(rho, maniac_mu_rho_coeffs, deg1)
+    print *, "mu =", mu
 
-  K = poly_fit(mu, nemd_k_mu_coeffs, deg3)
-  print *, "K =", K*1d6
+    rho_rec = poly_fit(mu, maniac_rho_mu_coeffs, deg2)
+    print *, "rho_rec =", rho_rec
 
-  mu_rec = poly_fit(K, nemd_mu_k_coeffs, deg4)
-  print *, "mu_rec =", mu_rec
+    K = poly_fit(mu, nemd_k_mu_coeffs, deg3)
+    print *, "K =", K*1d6
 
-  rho_last = poly_fit(mu_rec, maniac_rho_mu_coeffs, deg2)
-  print *, "rho_last =", rho_last
+    mu_rec = poly_fit(K, nemd_mu_k_coeffs, deg4)
+    print *, "mu_rec =", mu_rec
 
-  ! ===============================
-  ! System definition
-  ! ===============================
-  block_size = 5d-9
-  system_size = 200d-9
-  number_block = system_size / block_size
+    rho_last = poly_fit(mu_rec, maniac_rho_mu_coeffs, deg2)
+    print *, "rho_last =", rho_last
 
-  time_step = 100d-15
-  dt = 100000000
+    ! ===============================
+    ! System definition
+    ! ===============================
+    block_size = 5d-9
+    system_size = 200d-9
+    number_block = system_size / block_size
 
-  allocate(x_axis(number_block))
+    time_step = 100d-15
+    dt = 100000000
 
-  do i = 1, number_block
-     x_axis(i) = (i-1) * block_size
-  end do
+    allocate(x_axis(number_block))
 
-  ! ===============================
-  ! Initial conditions
-  ! ===============================
-  left_mu = 2d0 * 4184d0
-  right_mu = 3d0 * 4184d0
-  gradient = 1
-  init_mu = left_mu
+    do i = 1, number_block
+        x_axis(i) = (i-1) * block_size
+    end do
 
-  allocate(chemical_potential(number_block))
-  allocate(fluid_density(number_block))
+    ! ===============================
+    ! Initial conditions
+    ! ===============================
+    left_mu = 2d0 * 4184d0
+    right_mu = 3d0 * 4184d0
+    gradient = 1
+    init_mu = left_mu
 
-  open(10, file="output/initial_pore.dat")
+    allocate(chemical_potential(number_block))
+    allocate(fluid_density(number_block))
 
-  do i = 2, number_block-1
+    open(10, file="output/initial_pore.dat")
 
-     if (gradient == 1) then
-        chemical_potential(i) = left_mu + (right_mu-left_mu) * &
-                                (i-1) / real(number_block-1)
+    do i = 2, number_block-1
 
-     else
-        chemical_potential(i) = init_mu
-     end if
+        if (gradient == 1) then
+            chemical_potential(i) = left_mu + (right_mu-left_mu) * &
+                                    (i-1) / real(number_block-1)
 
-     fluid_density(i) = poly_fit(chemical_potential(i), maniac_rho_mu_coeffs, deg2)
+        else
+            chemical_potential(i) = init_mu
+        end if
 
-     write(10,*) x_axis(i)*1d9, chemical_potential(i), fluid_density(i)
+        fluid_density(i) = poly_fit(chemical_potential(i), maniac_rho_mu_coeffs, deg2)
 
-  end do
+        write(10,*) x_axis(i)*1d9, chemical_potential(i), fluid_density(i)
 
-  ! ===============================
-  ! Allocations
-  ! ===============================
-  allocate(permeability(number_block))
-  allocate(flux(number_block))
-  allocate(new_chemical_potential(number_block))
-  allocate(new_fluid_density(number_block))
+    end do
 
-  flux(1) = 0.0d0
+    ! ===============================
+    ! Allocations
+    ! ===============================
+    allocate(permeability(number_block))
+    allocate(flux(number_block))
+    allocate(new_chemical_potential(number_block))
+    allocate(new_fluid_density(number_block))
 
-  chemical_potential(1) = left_mu
-  chemical_potential(number_block) = right_mu
+    flux(1) = 0.0d0
 
-  fluid_density(1) = poly_fit(chemical_potential(1), maniac_rho_mu_coeffs, deg2)
-  fluid_density(number_block) = poly_fit(chemical_potential(number_block), maniac_rho_mu_coeffs, deg2)
+    chemical_potential(1) = left_mu
+    chemical_potential(number_block) = right_mu
 
-  ! ===============================
-  ! First iteration
-  ! ===============================
-  open(20, file="output/first_iteration.dat")
+    fluid_density(1) = poly_fit(chemical_potential(1), maniac_rho_mu_coeffs, deg2)
+    fluid_density(number_block) = poly_fit(chemical_potential(number_block), maniac_rho_mu_coeffs, deg2)
 
-  do i = 2, number_block-1
+    ! ===============================
+    ! First iteration
+    ! ===============================
+    open(20, file="output/first_iteration.dat")
 
-     permeability(i) = poly_fit(chemical_potential(i), nemd_k_mu_coeffs, deg3)
+    do i = 2, number_block-1
 
-     flux(i) = permeability(i) * &
-               (chemical_potential(i+1)-chemical_potential(i)) * &
-               (1d0/block_size) * (-1d0)
+        permeability(i) = poly_fit(chemical_potential(i), nemd_k_mu_coeffs, deg3)
 
-     new_fluid_density(i) = fluid_density(i) + &
-          (flux(i-1)-flux(i)) * time_step * dt
+        flux(i) = permeability(i) * &
+                (chemical_potential(i+1)-chemical_potential(i)) * &
+                (1d0/block_size) * (-1d0)
 
-     new_chemical_potential(i) = poly_fit(new_fluid_density(i), maniac_mu_rho_coeffs, deg1)
+        new_fluid_density(i) = fluid_density(i) + &
+            (flux(i-1)-flux(i)) * time_step * dt
 
-     write(20,*) x_axis(i)*1d9, new_chemical_potential(i), new_fluid_density(i)
+        new_chemical_potential(i) = poly_fit(new_fluid_density(i), maniac_mu_rho_coeffs, deg1)
 
-     chemical_potential(i) = new_chemical_potential(i)
-     fluid_density(i) = new_fluid_density(i)
+        write(20,*) x_axis(i)*1d9, new_chemical_potential(i), new_fluid_density(i)
 
-  end do
+        chemical_potential(i) = new_chemical_potential(i)
+        fluid_density(i) = new_fluid_density(i)
 
-  ! ===============================
-  ! cleanup
-  ! ===============================
-  deallocate(x_axis, chemical_potential, fluid_density)
-  deallocate(permeability, flux, new_chemical_potential, new_fluid_density)
+    end do
+
+    ! ===============================
+    ! cleanup
+    ! ===============================
+    deallocate(x_axis, chemical_potential, fluid_density)
+    deallocate(permeability, flux, new_chemical_potential, new_fluid_density)
 
 contains
 
-  function poly_fit(x, coeffs, degree) result(y)
-    implicit none
-    real(8), intent(in) :: x
-    real(8), intent(in) :: coeffs(:)
-    integer, intent(in) :: degree
-    real(8) :: y
-    integer :: i
+    function poly_fit(x, coeffs, degree) result(y)
+        implicit none
+        real(8), intent(in) :: x
+        real(8), intent(in) :: coeffs(:)
+        integer, intent(in) :: degree
+        real(8) :: y
+        integer :: i
 
-    y = 0d0
-    do i = 0, degree
-       y = y + coeffs(i+1) * x**(degree-i)
-    end do
-  end function
-
-  subroutine load_coeffs(filename, coeffs, degree)
-    implicit none
-    character(len=*), intent(in) :: filename
-    real(8), allocatable, intent(out) :: coeffs(:)
-    integer, intent(out) :: degree
-    integer :: n, i, unit
-
-    open(newunit=unit, file=filename, status='old')
-    read(unit,*) n
-    allocate(coeffs(n))
-
-    do i = 1, n
-       read(unit,*) coeffs(i)
-    end do
-
-    close(unit)
-
-    degree = n-1
-  end subroutine
+        y = 0d0
+        do i = 0, degree
+            y = y + coeffs(i+1) * x**(degree-i)
+        end do
+    end function
 
 end program grid_model
