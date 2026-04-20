@@ -7,13 +7,19 @@ mkdir -p output
 # clean old build artifacts
 rm -f *.o *.mod grid
 
-gfortran -c coeff_io.f90
-gfortran -c poly_fit.f90
-gfortran -c io_profiles.f90
-gfortran -c init_profiles.f90
-gfortran -c tables_io.f90
-gfortran -c grid.f90
+# compiler + flags
+FC=gfortran
+FCFLAGS="-g" # "-g -O0 -Wall -Wextra -Wunused -Wimplicit-interface -Wsurprising -fcheck=all -fbacktrace"
 
-gfortran coeff_io.o poly_fit.o io_profiles.o init_profiles.o tables_io.o grid.o -o grid
+# compile sources
+$FC $FCFLAGS -c coeff_io.f90
+$FC $FCFLAGS -c poly_fit.f90
+$FC $FCFLAGS -c io_profiles.f90
+$FC $FCFLAGS -c init_profiles.f90
+$FC $FCFLAGS -c tables_io.f90
+$FC $FCFLAGS -c grid.f90
+
+# link
+$FC coeff_io.o poly_fit.o io_profiles.o init_profiles.o tables_io.o grid.o -o grid
 
 echo "Build complete"
