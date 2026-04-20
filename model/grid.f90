@@ -3,6 +3,7 @@ program grid_model
     use coeff_io
     use poly_fit_mod
     use io_profiles
+    use init_profiles
 
     implicit none
 
@@ -13,6 +14,7 @@ program grid_model
     character(len=256) :: filename
     integer :: data_unit
     character(len=4) :: iter_str
+    integer :: mu_mode
 
     real(8) :: rho, mu, rho_rec, K, mu_rec, rho_last
     real(8) :: block_size, system_size, time_step, init_mu
@@ -56,7 +58,7 @@ program grid_model
     ! ===============================
     block_size = 5d-9
     system_size = 200d-9
-    number_block = system_size / block_size
+    number_block = int(system_size / block_size)
 
     time_step = 100d-15
     dt = 100000000
@@ -72,29 +74,16 @@ program grid_model
     ! ===============================
     left_mu = 2d0 * 4184d0
     right_mu = 3d0 * 4184d0
-    gradient = 1
-    init_mu = left_mu
+    mu_mode = 1 ! 1=linear, 2=left, 3=right
 
     allocate(chemical_potential(number_block))
     allocate(fluid_density(number_block))
 
-    open(10, file="output/initial_pore.dat")
+    call init_mu_profile(chemical_potential, x_axis, number_block, &
+                        left_mu, right_mu, mu_mode)
 
-    do i = 2, number_block-1
-
-        if (gradient == 1) then
-            chemical_potential(i) = left_mu + (right_mu-left_mu) * &
-                                    (i-1) / real(number_block-1)
-
-        else
-            chemical_potential(i) = init_mu
-        end if
-
-        fluid_density(i) = poly_fit(chemical_potential(i), maniac_rho_mu_coeffs, deg2)
-
-        write(10,*) x_axis(i)*1d9, chemical_potential(i), fluid_density(i)
-
-    end do
+    call init_rho_from_mu(fluid_density, chemical_potential, &
+                        number_block, maniac_rho_mu_coeffs, deg2)
 
     ! ===============================
     ! Allocations
@@ -104,7 +93,10 @@ program grid_model
     allocate(new_chemical_potential(number_block))
     allocate(new_fluid_density(number_block))
 
-    new_fluid_density = fluid_density
+    do i = 1, number_block
+        new_chemical_potential(i) = chemical_potential(i)
+        new_fluid_density(i) = fluid_density(i)
+    end do
 
     flux(1) = 0.0d0
 
