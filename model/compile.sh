@@ -1,0 +1,1 @@
+gfortran grid.f90 -o grid
