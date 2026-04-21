@@ -59,14 +59,15 @@ contains
         real(8), intent(in)  :: coeffs(:)
         integer, intent(in)  :: n, degree
 
-        integer :: i
+        integer :: block
 
-        rho(1) = 0 ! This corresponds to reservoir, the value is irrelevant
-        rho(n) = 0 ! This corresponds to reservoir, the value is irrelevant
+        ! Important note: the value of rho for block=1 and block=n is wrong,
+        ! in practice, it should be calculated from a theory accounting for entrance effects
+        ! This will be done someday
     
         ! Estimate rho from mu
-        do i = 2, n-1
-            rho(i) = poly_fit(mu(i), coeffs, degree)
+        do block = 1, n
+            rho(block) = poly_fit(mu(block), coeffs, degree)
         end do
 
     end subroutine compute_rho_from_mu

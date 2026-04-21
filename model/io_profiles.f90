@@ -38,9 +38,9 @@ contains
         integer, intent(in) :: iter
         integer, intent(in) :: number_block
         real(8), intent(in) :: block_centers(:), chemical_potential(:), fluid_density(:), flux(:)
-        character(len=4) :: iter_str
 
-        write(iter_str,'(I4.4)') iter
+        character(len=8) :: iter_str
+        write(iter_str,'(I8.8)') iter
 
         call write_profile("output/mu_"//iter_str//".dat", &
                         block_centers, chemical_potential, &
@@ -49,7 +49,7 @@ contains
                         block_centers, fluid_density, &
                         number_block, 1d9, "# x[nm] rho[1/m3]", .false.)
         call write_profile("output/flux_"//iter_str//".dat", &
-                        block_centers, flux, &
+                        block_centers, flux(2:number_block), &
                         number_block, 1d9, "# x[nm] flux[1/s]", .false.)
     end subroutine write_profiles
 

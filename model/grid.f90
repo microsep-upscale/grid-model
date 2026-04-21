@@ -8,7 +8,7 @@ program grid_model
 
     implicit none
 
-    integer :: number_block, number_edge, i, degree, gradient, block, edge
+    integer :: number_block, number_edge, i, degree, gradient, block, edge, edge1, edge2
     integer :: deg1, deg2, deg3, deg4
     integer :: n_iter, iter
     integer :: log_unit
@@ -20,9 +20,9 @@ program grid_model
 
     real(8) :: rho, mu, rho_rec, K, mu_rec, flux
     real(8) :: block_size, system_size, time_step, init_mu, block_area, block_volume, Na, m_fluid, max_time_step
-    real(8) :: left_mu, right_mu
-    real(8) :: max_rel_change, tol_min, tol_max, growth_factor, grad_mu_edge, force_edge, net_flux
-    real(8) :: force_right, force_left, flux_left, flux_right
+    real(8) :: left_mu, right_mu, density_edge, permeability_edge
+    real(8) :: max_rel_change, tol_min, tol_max, growth_factor, grad_mu_edge, net_flux
+    real(8) :: force_edge, flux_edge, flux_mean, flux_std, flux_conservation
 
     real(8), allocatable :: block_centers(:)
     real(8), allocatable :: block_edges(:)
@@ -37,14 +37,20 @@ program grid_model
     real(8), allocatable :: rho_vs_mu(:)
     real(8), allocatable :: M_vs_mu(:)
 
+    real(8) :: conv_tol
+
     real(8), parameter :: kcal_to_j = 4184.0d0
+    integer :: conv_unit
 
     ! Load coefficients
     call load_coeffs("../data/T84/rho_vs_mu_fit.txt", rho_vs_mu, deg2)
     call load_coeffs("../data/T84/M_vs_mu_fit.txt", M_vs_mu, deg4)
 
+    ! For simulation stoping
+    conv_tol = 1e-3  ! declare with other scalars
+
     ! System definition
-    block_size = 5d-9 ! m
+    block_size = 2d-9 ! m
     system_size = 200d-9 ! m
     number_block = int(system_size / block_size)
     number_edge = number_block - 1 ! number of edge = number of block  + 1 - number of reservoirs
@@ -53,7 +59,7 @@ program grid_model
 
     ! Parameters
     time_step = 1e-15 ! s (initial timestep)
-    max_time_step = 1e-9 ! s (max timestep)
+    max_time_step = 1e-12 ! s (max timestep)
     Na = 6.022e23 ! mol-1
     m_fluid = 40d-3  ! kg/mol
 
@@ -70,17 +76,19 @@ program grid_model
     allocate(grad_mu(number_edge)) ! J/(mol·m)
     allocate(flux_edges(number_edge)) ! s-1
 
-    block_edges(1) = 0
+    ! Vector "position" along the pore
     do block = 1, number_block
-        block_centers(block) = (block-1) * block_size + block_size/2
-        block_edges(block+1) = block * block_size
+        block_centers(block) = (block-1) * block_size + block_size/2 ! in m
+    end do
+    do edge = 1, number_edge
+        block_edges(edge) = (edge-1) * block_size ! in m
     end do
 
     ! Initial conditions (make sure this corresponds to the range simulated in MD)
     left_mu = -3.0d0 * kcal_to_j ! J/mol
     right_mu = -2.0d0 * kcal_to_j ! J/mol
 
-    mu_mode = 1 ! Pick the initial chemical potential profile
+    mu_mode = 2 ! Pick the initial chemical potential profile
     ! 1: linear increase from left to right
     ! 2: use the value from the left reservoir
     ! 3: use the value from the right reservoir
@@ -103,20 +111,24 @@ program grid_model
     ! ===============================
     ! Iteration
     ! ===============================
-    n_iter = 10000
-    n_jump = 10
-    check_interval = 10
+    n_iter = 100000000
+    n_jump = 1000000
+    check_interval = 100
     log_unit = 99
     data_unit = 98
+    conv_unit = 97
 
     ! timestep reevaluation
     tol_min=1e-7
-    tol_max=1e-6
+    tol_max=1e-5
     growth_factor=2.0
 
     open(newunit=log_unit, file="output/grid.log", status="replace", action="write")
     write(log_unit,*) "Simulation started"
     write(log_unit,*) "Number of iterations =", n_iter
+
+    open(newunit=conv_unit, file="output/conservation.dat", status="replace", action="write")
+    write(conv_unit,*) "# iter    time[s]    flux_mean[1/s]    flux_std[1/s]    conservation_score"
 
     iter = 0
 
@@ -124,6 +136,7 @@ program grid_model
 
         iter = iter + 1
 
+        ! outputs
         if (mod(iter, n_jump) == 0) then
             ! write profiles to files
             call write_profiles(int(iter/n_jump), block_centers, chemical_potential, fluid_density, flux_edges, number_block)
@@ -131,31 +144,45 @@ program grid_model
             write(log_unit,*) "iter =", iter
         end if
 
-        ! evaluate grad mu before any update
+        ! evaluate grad mu *before* any update of the chemical potential
         do block = 2, number_block
             edge = block-1
-            ! gradient at the edge (difference between neighboring block centers)
             grad_mu(edge) = (chemical_potential(block) - chemical_potential(block-1)) / block_size ! [J/(mol·m)]
         end do
 
         ! evaluate permeability before any update
-        do block = 2, number_block-1
+        ! Important note: the value of permeability for block=1 and block=n is wrong,
+        ! in practice, it should be calculated from a theory accounting for entrance effects
+        ! This will be done someday
+        do block = 1, number_block
             permeability(block) = poly_fit(chemical_potential(block), M_vs_mu, deg4) ! [s/kg/m]
         end do
 
         ! update density with safety check
+        do edge = 1, number_edge
+            block = edge + 1 
+            density_edge = (fluid_density(block) + fluid_density(block-1))/2 ! m-3
+            permeability_edge = (permeability(block) + permeability(block-1))/2 ! m-3
+            force_edge = -grad_mu(edge) * density_edge * block_volume / Na ! N
+            flux_edge = permeability_edge * force_edge ! 1/s
+            flux_edges(edge) = flux_edge
+        end do
+
+        ! update density with safety check
         do block = 2, number_block-1
-            edge = block-1
-            force_left = -grad_mu(edge) * fluid_density(block) * block_volume / Na ! N
-            force_right = -grad_mu(edge+1) * fluid_density(block) * block_volume / Na ! N
-            flux_left = permeability(block) * force_left ! 1/s
-            flux_right = permeability(block) * force_right ! 1/s
-            net_flux = flux_left - flux_right ! 1/s
+
+            edge1 = block-1
+            edge2 = block
+
+            ! Net flux in the block is the sum over the two edges
+            net_flux = flux_edges(edge1) - flux_edges(edge2)
+
+            ! Updated density based on the flux
             delta_density(block) = net_flux * time_step / block_volume
             fluid_density(block) = fluid_density(block) + delta_density(block)
+            
+            ! Update the chemical potential
             chemical_potential(block) = invert_poly2(fluid_density(block), rho_vs_mu)
-
-            flux_edges(edge) = net_flux
 
             ! guard against out-of-range density before inversion
             if (fluid_density(block) <= 0d0) then
@@ -203,6 +230,54 @@ program grid_model
             else if (max_rel_change > tol_max) then
                 time_step = time_step / growth_factor
             end if
+        end if
+
+        ! every check_interval iterations, check flux conservation
+        if (mod(iter, check_interval) == 0) then
+
+            ! flux conservation score: std dev of interior edge fluxes
+            ! at steady state all interior fluxes should be equal
+            flux_mean = 0d0
+            do block = 2, number_block-1
+                edge = block - 1
+                flux_mean = flux_mean + flux_edges(edge)
+            end do
+            flux_mean = flux_mean / real(number_block-2, 8)
+
+            flux_std = 0d0
+            do block = 2, number_block-1
+                edge = block - 1
+                flux_std = flux_std + (flux_edges(edge) - flux_mean)**2
+            end do
+            flux_std = sqrt(flux_std / real(number_block-2, 8))
+
+            ! normalized score: 0 = perfectly conserved, 1 = large variation
+            if (abs(flux_mean) > 0d0) then
+                flux_conservation = flux_std / abs(flux_mean)
+            else
+                flux_conservation = 0d0
+            end if
+
+            if (flux_conservation > 10d0) then
+                write(*,*) "time_step =", time_step
+                write(*,*) flux_conservation, flux_std, flux_mean
+                write(*,*) flux_edges
+                stop "Conservation score diverged — simulation aborted"
+            end if
+
+            ! check for convergence
+            if (flux_conservation < conv_tol .and. iter > check_interval) then
+                write(*,*) "Converged at iter =", iter
+                write(*,*) "  flux_conservation =", flux_conservation
+                write(*,*) "  flux_mean =", flux_mean
+                write(log_unit,*) "Converged at iter =", iter, " flux_conservation =", flux_conservation
+                call write_profiles(int(iter/n_jump), block_centers, chemical_potential, fluid_density, flux_edges, number_block)
+                write(conv_unit,'(I10,4ES20.10)') iter, flux_conservation, flux_mean, flux_std, time_step
+                stop "The simulation has converged successfully"
+            end if
+
+            write(conv_unit,'(I10,4ES20.10)') iter, flux_conservation, flux_mean, flux_std, time_step
+
         end if
 
     end do
