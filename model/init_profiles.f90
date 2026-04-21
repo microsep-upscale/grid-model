@@ -51,7 +51,7 @@ contains
 
     ! Compute density profile from chemical potential using polynomial fit.
     ! Applies relation rho(mu) on interior nodes (edges handled separately).
-    subroutine init_rho_from_mu(rho, mu, n, coeffs, degree)
+    subroutine compute_rho_from_mu(rho, mu, n, coeffs, degree)
         implicit none
 
         real(8), intent(out) :: rho(:)
@@ -61,13 +61,14 @@ contains
 
         integer :: i
 
-        rho(1) = 0
-        rho(n) = 0
+        rho(1) = 0 ! This corresponds to reservoir, the value is irrelevant
+        rho(n) = 0 ! This corresponds to reservoir, the value is irrelevant
     
+        ! Estimate rho from mu
         do i = 2, n-1
             rho(i) = poly_fit(mu(i), coeffs, degree)
         end do
 
-    end subroutine init_rho_from_mu
+    end subroutine compute_rho_from_mu
 
 end module init_profiles

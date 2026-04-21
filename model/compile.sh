@@ -21,5 +21,3 @@ $FC $FCFLAGS -c grid.f90
 
 # link
 $FC coeff_io.o poly_fit.o io_profiles.o init_profiles.o tables_io.o grid.o -o grid
-
-echo "Build complete"
