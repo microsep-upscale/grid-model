@@ -1,6 +1,7 @@
 module init_profiles
 
     use poly_fit_mod
+    use spline_eval
 
     implicit none
 
@@ -49,26 +50,48 @@ contains
 
     end subroutine init_mu_profile
 
-    ! Compute density profile from chemical potential using polynomial fit.
-    ! Applies relation rho(mu) on interior nodes (edges handled separately).
-    subroutine compute_rho_from_mu(rho, mu, n, coeffs, degree)
-        implicit none
+    ! ! Compute density profile from chemical potential using polynomial fit.
+    ! ! Applies relation rho(mu) on interior nodes (edges handled separately).
+    ! subroutine compute_rho_from_mu(rho, mu, n, coeffs, degree)
+    !     implicit none
 
-        real(8), intent(out) :: rho(:)
-        real(8), intent(in)  :: mu(:)
-        real(8), intent(in)  :: coeffs(:)
-        integer, intent(in)  :: n, degree
+    !     real(8), intent(out) :: rho(:)
+    !     real(8), intent(in)  :: mu(:)
+    !     real(8), intent(in)  :: coeffs(:)
+    !     integer, intent(in)  :: n, degree
 
-        integer :: block
+    !     integer :: block
 
-        ! Important note: the value of rho for block=1 and block=n is wrong,
-        ! in practice, it should be calculated from a theory accounting for entrance effects
-        ! This will be done someday
+    !     ! Important note: the value of rho for block=1 and block=n is wrong,
+    !     ! in practice, it should be calculated from a theory accounting for entrance effects
+    !     ! This will be done someday
     
-        ! Estimate rho from mu
-        do block = 1, n
-            rho(block) = poly_fit(mu(block), coeffs, degree)
-        end do
+    !     ! Estimate rho from mu
+    !     do block = 1, n
+    !         rho(block) = poly_fit(mu(block), coeffs, degree)
+    !     end do
+
+    ! end subroutine compute_rho_from_mu
+
+    ! Compute density profile from chemical potential using spline fit.
+    ! Applies relation rho(mu) on all nodes.
+    subroutine compute_rho_from_mu(rho, mu, n, spl)
+    use spline_data
+    use spline_eval
+    implicit none
+    real(8),        intent(out) :: rho(:)
+    real(8),        intent(in)  :: mu(:)
+    integer,        intent(in)  :: n
+    type(spline_t), intent(in)  :: spl
+    integer :: block
+
+    ! Important note: the value of rho for block=1 and block=n is wrong,
+    ! in practice, it should be calculated from a theory accounting for entrance effects
+    ! This will be done someday
+
+    do block = 1, n
+        rho(block) = eval_spline(mu(block), spl)
+    end do
 
     end subroutine compute_rho_from_mu
 
