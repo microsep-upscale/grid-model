@@ -16,7 +16,7 @@ program grid_model
 
     integer :: number_block, number_edge, i, degree, gradient, block, edge, edge1, edge2
     integer :: deg1, deg2, deg3, deg4
-    integer :: n_iter, iter
+    integer(kind=8) :: n_iter, iter
     integer :: log_unit
     character(len=256) :: filename
     integer :: data_unit
@@ -120,9 +120,9 @@ program grid_model
     delta_density = 0.0d0
 
     ! Iteration
-    n_iter = 1000000000 ! simulation max duration (note that the simulation stop if convergence reached before)
-    n_jump = 1000000 ! interval for data printing
-    check_interval = 1000 ! interval for timestep reevaluation
+    n_iter = 5000000000_8 ! simulation max duration (note that the simulation stop if convergence reached before)
+    n_jump = 5000000 ! interval for data printing
+    check_interval = 5000 ! interval for timestep reevaluation
 
     ! For output file
     log_unit = 99
