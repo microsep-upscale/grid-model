@@ -9,7 +9,7 @@ rm -f *.o *.mod grid
 
 # compiler + flags
 FC=gfortran
-FCFLAGS="-g" # "-g -O0 -Wall -Wextra -Wunused -Wimplicit-interface -Wsurprising -fcheck=all -fbacktrace"
+FCFLAGS="-g -O0 -Wall -Wextra -Wunused -Wimplicit-interface -Wsurprising -fcheck=all -fbacktrace"
 
 # compile sources
 $FC $FCFLAGS -c coeff_io.f90

@@ -14,21 +14,14 @@ program grid_model
 
     type(spline_t) :: spl_rho, spl_M
 
-    integer :: number_block, number_edge, i, degree, gradient, block, edge, edge1, edge2
-    integer :: deg1, deg2, deg3, deg4
     integer(kind=8) :: n_iter, iter
-    integer :: log_unit
-    character(len=256) :: filename
-    integer :: data_unit
-    character(len=4) :: iter_str
-    integer :: mu_mode
-    integer :: n_jump, check_interval
-
-    real(8) :: rho, mu, rho_rec, K, mu_rec, flux
-    real(8) :: block_size, system_size, time_step, init_mu, block_area, block_volume, Na, m_fluid, max_time_step
+    integer :: number_block, number_edge, i, block, edge, edge1, edge2
+    integer :: log_unit, data_unit, mu_mode, n_jump, check_interval, conv_unit
+    real(8) :: flux, block_size, system_size, time_step, block_area, block_volume, Na, m_fluid, max_time_step
     real(8) :: left_mu, right_mu, density_edge, permeability_edge
-    real(8) :: max_rel_change, tol_min, tol_max, growth_factor, grad_mu_edge, net_flux
+    real(8) :: max_rel_change, tol_min, tol_max, growth_factor, net_flux
     real(8) :: force_edge, flux_edge, flux_mean, flux_std, flux_conservation
+    real(8) :: time, conv_tol
 
     real(8), allocatable :: block_centers(:)
     real(8), allocatable :: block_edges(:)
@@ -38,15 +31,8 @@ program grid_model
     real(8), allocatable :: permeability(:)
     real(8), allocatable :: flux_edges(:)
     real(8), allocatable :: grad_mu(:)
-    real(8), allocatable :: total_force(:)
-
-    real(8), allocatable :: rho_vs_mu(:)
-    real(8), allocatable :: M_vs_mu(:)
-
-    real(8) :: conv_tol
 
     real(8), parameter :: kcal_to_j = 4184.0d0
-    integer :: conv_unit
 
     ! ! Load coefficients
     ! call load_coeffs("../data/T84/rho_vs_mu_fit.txt", rho_vs_mu, deg2)
@@ -57,7 +43,7 @@ program grid_model
     call load_spline("../data/T300/spline_M_vs_mu.txt",   spl_M)
 
     ! For simulation stoping
-    conv_tol = 1e-3  ! declare with other scalars
+    conv_tol = 1e-3
 
     ! System definition
     block_size = 2d-9 ! m
@@ -79,7 +65,6 @@ program grid_model
     allocate(fluid_density(number_block)) ! m-3
     allocate(delta_density(number_block)) ! m-3
     allocate(permeability(number_block)) ! s/kg/m
-    allocate(total_force(number_block)) ! N
 
     ! Quantities that are defined between cells (at the edges)
     allocate(block_edges(number_edge))
@@ -95,10 +80,10 @@ program grid_model
     end do
 
     ! Initial conditions (make sure this corresponds to the range simulated in MD)
-    left_mu = -8.0d0 * kcal_to_j ! J/mol
+    left_mu = -3.0d0 * kcal_to_j ! J/mol
     right_mu = -2.0d0 * kcal_to_j ! J/mol
 
-    mu_mode = 2 ! Pick the initial chemical potential profile
+    mu_mode = 1 ! Pick the initial chemical potential profile
     ! 1: linear increase from left to right
     ! 2: use the value from the left reservoir
     ! 3: use the value from the right reservoir
@@ -107,7 +92,7 @@ program grid_model
     ! call generate_tables(left_mu, right_mu, 10, rho_vs_mu, deg2, M_vs_mu, deg4)
 
     ! Initialise the chemical potential profile within the pore
-    call init_mu_profile(chemical_potential, block_centers, number_block, left_mu, right_mu, mu_mode)
+    call init_mu_profile(chemical_potential, number_block, left_mu, right_mu, mu_mode)
 
     ! Initialise the density profile within the pore
     ! call compute_rho_from_mu(fluid_density, chemical_potential, number_block, rho_vs_mu, deg2)
@@ -120,9 +105,9 @@ program grid_model
     delta_density = 0.0d0
 
     ! Iteration
-    n_iter = 5000000000_8 ! simulation max duration (note that the simulation stop if convergence reached before)
-    n_jump = 5000000 ! interval for data printing
-    check_interval = 5000 ! interval for timestep reevaluation
+    n_iter = 500000000_8 ! simulation max duration (note that the simulation stop if convergence reached before)
+    n_jump = 50000 ! interval for data printing
+    check_interval = 10000 ! interval for timestep reevaluation
 
     ! For output file
     log_unit = 99
@@ -132,31 +117,38 @@ program grid_model
     ! Timestep reevaluation
     tol_min=1e-7
     tol_max=1e-5
-    growth_factor=2.0
+    growth_factor=1.1
 
     open(newunit=log_unit, file="output/grid.log", status="replace", action="write")
     write(log_unit,*) "Simulation started"
     write(log_unit,*) "Number of iterations =", n_iter
 
     open(newunit=conv_unit, file="output/conservation.dat", status="replace", action="write")
-    write(conv_unit,*) "# iter    time[s]    flux_mean[1/s]    flux_std[1/s]    conservation_score"
+    write(conv_unit,*) "# iter    flux_conservation    flux_mean[1/s]    flux_std[1/s]    time_step[s]"
 
     iter = 0
+    time = 0d0 ! in seconde
 
     do while (iter < n_iter)
 
         iter = iter + 1
+        time = time + time_step ! in second
 
         ! outputs
         if (mod(iter, n_jump) == 0) then
             ! write profiles to files
-            call write_profiles(int(iter/n_jump), block_centers, chemical_potential, fluid_density, flux_edges, number_block)
+            call write_profiles(int(iter/n_jump), time, &
+                                block_centers, block_edges, &
+                                chemical_potential, fluid_density, &
+                                permeability, flux_edges, grad_mu, &
+                                number_block, number_edge)
+
             ! log per iteration
             write(log_unit,*) "iter =", iter
             ! terminal progress
             write(*,'(A,I10,A,F6.1,A,ES10.3,A,ES10.3)') &
                 "  iter=", iter, &
-                "  progress=", 100.0*iter/n_iter, &
+                "  progress=", 100.0*int(iter/n_iter), &
                 "  dt=", time_step, &
                 "  flux_mean=", flux_mean
         end if
@@ -295,7 +287,13 @@ program grid_model
                 write(*,*) "  flux_conservation =", flux_conservation
                 write(*,*) "  flux_mean =", flux_mean
                 write(log_unit,*) "Converged at iter =", iter, " flux_conservation =", flux_conservation
-                call write_profiles(int(iter/n_jump), block_centers, chemical_potential, fluid_density, flux_edges, number_block)
+
+                call write_profiles(int(iter/n_jump), time, &
+                                    block_centers, block_edges, &
+                                    chemical_potential, fluid_density, &
+                                    permeability, flux_edges, grad_mu, &
+                                    number_block, number_edge, label="final")
+
                 write(conv_unit,'(I10,4ES20.10)') iter, flux_conservation, flux_mean, flux_std, time_step
                 stop "The simulation has converged successfully"
             end if
@@ -306,7 +304,5 @@ program grid_model
 
     end do
 
-    ! write final profiles to files
-    call write_profiles(int(iter/n_jump), block_centers, chemical_potential, fluid_density, flux_edges, number_block)
 
 end program grid_model
