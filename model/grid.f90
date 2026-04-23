@@ -202,7 +202,7 @@ program grid_model
 
             ! guard against out-of-range density before inversion
             if (fluid_density(block) <= 0d0) then
-                write(*,*) "Negative density at iter =", iter, " block =", i
+                write(*,*) "Negative density at iter =", iter, " block =", block
                 exit
             end if
 
@@ -234,7 +234,7 @@ program grid_model
             ! evaluate the max relative change in density
             max_rel_change = 0d0
             do i = 2, number_block-1
-                max_rel_change = max(max_rel_change, abs(delta_density(i) / fluid_density(i)))
+                max_rel_change = max(max_rel_change, abs(delta_density(i)) / max(fluid_density(i), 1d-30))
             end do
 
             ! adjust timestep to make sure the typical change in density is within desired windows
