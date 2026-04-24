@@ -173,7 +173,7 @@ program grid_model
             permeability(block) = eval_spline(chemical_potential(block), spl_M)
         end do
 
-        ! update density with safety check
+        ! 
         do edge = 1, number_edge
             block = edge + 1 
             density_edge = (fluid_density(block) + fluid_density(block-1))/2 ! m-3
