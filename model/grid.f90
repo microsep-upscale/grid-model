@@ -46,8 +46,8 @@ program grid_model
     conv_tol = 1e-3
 
     ! System definition
-    block_size = 2d-9 ! m
-    system_size = 200d-9 ! m
+    block_size = 1d-9 ! m
+    system_size = 62d-9 ! m
     number_block = int(system_size / block_size)
     number_edge = number_block - 1 ! number of edge = number of block  + 1 - number of reservoirs
     block_area = block_size*block_size ! m**2
@@ -80,8 +80,8 @@ program grid_model
     end do
 
     ! Initial conditions (make sure this corresponds to the range simulated in MD)
-    left_mu = -3.0d0 * kcal_to_j ! J/mol
-    right_mu = -2.0d0 * kcal_to_j ! J/mol
+    left_mu = -2.0d0 * kcal_to_j ! J/mol
+    right_mu = -8.0d0 * kcal_to_j ! J/mol
 
     mu_mode = 1 ! Pick the initial chemical potential profile
     ! 1: linear increase from left to right
