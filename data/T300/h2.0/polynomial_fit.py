@@ -7,7 +7,7 @@ from scipy.interpolate import CubicSpline
 from scipy.optimize import brentq
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-h = 2e-9
+h = 1e-9
 volume = 4e-9 * 4e-9 * h
 area = 4e-9 * h
 m = 40e-3
@@ -18,15 +18,10 @@ f0_SI = f0_real * kcal_to_j * 1e10 / Na
 
 # ── Load MD data ───────────────────────────────────────────────────────────────
 md_data = np.loadtxt("number_and_v_vs_mu.dat")
-mu_real, number, _, v_real, _ = md_data.T
+mu_real, rho_SI, _, M_SI, _ = md_data.T
 
 # ── SI units ───────────────────────────────────────────────────────────────────
 mu_SI  = mu_real * kcal_to_j
-v_SI   = v_real * 1e-10 / 1e-15
-rho_SI = number / volume
-total_force = rho_SI * f0_SI * volume
-total_flux  = rho_SI * v_SI * area
-M_SI        = total_flux / total_force
 
 # ── Spline fits ────────────────────────────────────────────────────────────────
 cs_rho_fwd = CubicSpline(mu_SI, rho_SI)
