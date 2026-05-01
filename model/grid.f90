@@ -39,15 +39,15 @@ program grid_model
     ! call load_coeffs("../data/T84/M_vs_mu_fit.txt", M_vs_mu, deg4)
 
     ! Load splines (replaces load_coeffs)
-    call load_spline("../data/T300/spline_rho_vs_mu.txt", spl_rho)
-    call load_spline("../data/T300/spline_M_vs_mu.txt",   spl_M)
+    call load_spline("../data/T300/h1.0/spline_rho_vs_mu.txt", spl_rho)
+    call load_spline("../data/T300/h1.0/spline_M_vs_mu.txt",   spl_M)
 
     ! For simulation stoping
     conv_tol = 1e-3
 
     ! System definition
     block_size = 1d-9 ! m
-    system_size = 62d-9 ! m
+    system_size = 100d-9 ! m
     number_block = int(system_size / block_size)
     number_edge = number_block - 1 ! number of edge = number of block  + 1 - number of reservoirs
     block_area = block_size*block_size ! m**2
@@ -81,7 +81,7 @@ program grid_model
 
     ! Initial conditions (make sure this corresponds to the range simulated in MD)
     left_mu = -2.0d0 * kcal_to_j ! J/mol
-    right_mu = -8.0d0 * kcal_to_j ! J/mol
+    right_mu = -7.0d0 * kcal_to_j ! J/mol
 
     mu_mode = 1 ! Pick the initial chemical potential profile
     ! 1: linear increase from left to right
