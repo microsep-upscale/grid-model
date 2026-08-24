@@ -39,8 +39,8 @@ program grid_model
     ! call load_coeffs("../data/T84/M_vs_mu_fit.txt", M_vs_mu, deg4)
 
     ! Load splines (replaces load_coeffs)
-    call load_spline("../data/T300/h1.0/spline_rho_vs_mu.txt", spl_rho)
-    call load_spline("../data/T300/h1.0/spline_M_vs_mu.txt",   spl_M)
+    call load_spline("../data/calf/spline_rho_vs_mu.txt", spl_rho)
+    call load_spline("../data/calf/spline_M_vs_mu.txt",   spl_M)
 
     ! For simulation stoping
     conv_tol = 1e-3
@@ -80,8 +80,8 @@ program grid_model
     end do
 
     ! Initial conditions (make sure this corresponds to the range simulated in MD)
-    left_mu = -2.0d0 * kcal_to_j ! J/mol
-    right_mu = -7.0d0 * kcal_to_j ! J/mol
+    left_mu = -9.5d0 * kcal_to_j ! J/mol
+    right_mu = -13.0d0 * kcal_to_j ! J/mol
 
     mu_mode = 1 ! Pick the initial chemical potential profile
     ! 1: linear increase from left to right
