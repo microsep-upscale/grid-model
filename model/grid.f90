@@ -83,7 +83,7 @@ program grid_model
     left_mu = -9.5d0 * kcal_to_j ! J/mol
     right_mu = -13.0d0 * kcal_to_j ! J/mol
 
-    mu_mode = 1 ! Pick the initial chemical potential profile
+    mu_mode = 3 ! Pick the initial chemical potential profile
     ! 1: linear increase from left to right
     ! 2: use the value from the left reservoir
     ! 3: use the value from the right reservoir
