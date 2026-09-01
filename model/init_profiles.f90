@@ -15,7 +15,7 @@ contains
         real(8), intent(out) :: mu(:)
         integer, intent(in) :: n
         real(8), intent(in) :: left_mu, right_mu
-        integer, intent(in) :: mode   ! 1=linear, 2=left, 3=right
+        integer, intent(in) :: mode   ! 1=linear, 2=left, 3=right, 4=step
 
         integer :: i
 
@@ -39,6 +39,12 @@ contains
             case (3)
                 ! right reservoir
                 mu(i) = right_mu
+
+            case (4)
+                ! right reservoir
+                mu(i) = right_mu          
+                mu(1) = left_mu
+                mu(n) = left_mu
 
             case default
                 stop "Unknown mu initialization mode"
