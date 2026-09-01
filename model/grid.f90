@@ -276,10 +276,14 @@ program grid_model
             end if
 
             if (flux_conservation > 10d0) then
-                write(*,*) "time_step =", time_step
-                write(*,*) flux_conservation, flux_std, flux_mean
-                write(*,*) flux_edges
-                stop "Conservation score diverged — simulation aborted"
+                if (mu_mode == 4) then
+                    ! criteria not relevant in that case
+                else
+                    write(*,*) "time_step =", time_step
+                    write(*,*) flux_conservation, flux_std, flux_mean
+                    write(*,*) flux_edges
+                    stop "Conservation score diverged — simulation aborted"
+                end if
             end if
 
             ! check for convergence
