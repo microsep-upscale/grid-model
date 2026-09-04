@@ -17,7 +17,9 @@ program grid_model
     integer(kind=8) :: n_iter, iter
     integer :: number_block, number_edge, i, block, edge, edge1, edge2
     integer :: log_unit, data_unit, mu_mode, n_jump, check_interval, conv_unit
-    real(8) :: flux, block_size, system_size, time_step, block_area, block_volume, Na, m_fluid, max_time_step
+    integer :: input_unit, ios
+
+    real(8) :: flux, block_size, system_size, time_step, block_area, block_volume, Na, max_time_step
     real(8) :: left_mu, right_mu, density_edge, permeability_edge
     real(8) :: max_rel_change, tol_min, tol_max, growth_factor, net_flux
     real(8) :: force_edge, flux_edge, flux_mean, flux_std, flux_conservation
@@ -34,6 +36,38 @@ program grid_model
 
     real(8), parameter :: kcal_to_j = 4184.0d0
 
+    ! Declare a namelist and give the variables defaults
+    namelist /params/ block_size, system_size, time_step, max_time_step, &
+                    left_mu, right_mu, mu_mode, n_iter, n_jump, &
+                    check_interval, conv_tol, tol_min, tol_max, growth_factor
+
+    ! Set defaults (fallback if grid.in doesn't define them)
+    block_size = 1d-9
+    system_size = 100d-9
+    time_step = 1e-15
+    max_time_step = 1e-12
+    left_mu = -9.5d0
+    right_mu = -13.0d0
+    mu_mode = 4
+    n_iter = 500000000_8
+    n_jump = 50000
+    check_interval = 10000
+    conv_tol = 1e-3
+    tol_min = 1e-7
+    tol_max = 1e-5
+    growth_factor = 1.1
+
+    open(newunit=input_unit, file="grid.in", status="old", action="read")
+    read(input_unit, nml=params, iostat=ios)
+    if (ios /= 0) then
+        write(*,*) "Namelist read failed, iostat=", ios
+        stop 1
+    end if
+    close(input_unit)
+
+    left_mu = left_mu * kcal_to_j
+    right_mu = right_mu * kcal_to_j
+
     ! ! Load coefficients
     ! call load_coeffs("../data/T84/rho_vs_mu_fit.txt", rho_vs_mu, deg2)
     ! call load_coeffs("../data/T84/M_vs_mu_fit.txt", M_vs_mu, deg4)
@@ -42,12 +76,7 @@ program grid_model
     call load_spline("../data/calf/spline_rho_vs_mu.txt", spl_rho)
     call load_spline("../data/calf/spline_M_vs_mu.txt",   spl_M)
 
-    ! For simulation stoping
-    conv_tol = 1e-3
-
     ! System definition
-    block_size = 1d-9 ! m
-    system_size = 100d-9 ! m
     number_block = nint(system_size / block_size) ! nint, not int to avoid truncating
 
     number_edge = number_block - 1 ! number of edge = number of block  + 1 - number of reservoirs
@@ -55,10 +84,7 @@ program grid_model
     block_volume = block_size*block_size*block_size ! m**3
 
     ! Parameters
-    time_step = 1e-15 ! s (initial timestep)
-    max_time_step = 1e-12 ! s (max timestep)
     Na = 6.022e23 ! mol-1
-    m_fluid = 40d-3  ! kg/mol
 
     ! Quantities that are define within cell
     allocate(block_centers(number_block))
@@ -81,10 +107,10 @@ program grid_model
     end do
 
     ! Initial conditions (make sure this corresponds to the range simulated in MD)
-    left_mu = -9.5d0 * kcal_to_j ! J/mol
-    right_mu = -13.0d0 * kcal_to_j ! J/mol
+    ! left_mu = -9.5d0 * kcal_to_j ! J/mol
+    ! right_mu = -13.0d0 * kcal_to_j ! J/mol
 
-    mu_mode = 4 ! Pick the initial chemical potential profile
+    ! Pick the initial chemical potential profile
     ! 1: linear increase from left to right
     ! 2: use the value from the left reservoir
     ! 3: use the value from the right reservoir
@@ -106,20 +132,10 @@ program grid_model
     grad_mu = 0.0d0
     delta_density = 0.0d0
 
-    ! Iteration
-    n_iter = 500000000_8 ! simulation max duration (note that the simulation stop if convergence reached before)
-    n_jump = 50000 ! interval for data printing
-    check_interval = 10000 ! interval for timestep reevaluation
-
     ! For output file
     log_unit = 99
     data_unit = 98
     conv_unit = 97
-
-    ! Timestep reevaluation
-    tol_min=1e-7
-    tol_max=1e-5
-    growth_factor=1.1
 
     open(newunit=log_unit, file="output/grid.log", status="replace", action="write")
     write(log_unit,*) "Simulation started"
