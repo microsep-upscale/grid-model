@@ -48,7 +48,8 @@ program grid_model
     ! System definition
     block_size = 1d-9 ! m
     system_size = 100d-9 ! m
-    number_block = int(system_size / block_size)
+    number_block = nint(system_size / block_size) ! nint, not int to avoid truncating
+
     number_edge = number_block - 1 ! number of edge = number of block  + 1 - number of reservoirs
     block_area = block_size*block_size ! m**2
     block_volume = block_size*block_size*block_size ! m**3
