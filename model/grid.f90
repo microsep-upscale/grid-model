@@ -9,6 +9,7 @@ program grid_model
     use io_profiles
     use init_profiles
     use tables_io
+    use timestep_control
 
     implicit none
 
@@ -24,7 +25,7 @@ program grid_model
 
     real(8) :: flux, time_step, block_area_yz, block_volume_xyz, Na, max_time_step
     real(8) :: left_mu, right_mu, inside_mu, density_edge, permeability_edge
-    real(8) :: max_rel_change, tol_min, tol_max, growth_factor, net_flux
+    real(8) :: tol_min, tol_max, growth_factor, net_flux
     real(8) :: force_edge, flux_edge, flux_mean, flux_std, flux_conservation
     real(8) :: time, conv_tol
     character(len=256) :: rho_spline_file, M_spline_file
@@ -253,24 +254,9 @@ program grid_model
             end if
         end do
 
-        ! every check_interval iterations, adapt timestep
         if (mod(iter, check_interval) == 0) then
-
-            ! evaluate the max relative change in density
-            max_rel_change = 0d0
-            do i = 2, number_block-1
-                max_rel_change = max(max_rel_change, abs(delta_density(i)) / max(fluid_density(i), 1d-30))
-            end do
-
-            ! adjust timestep to make sure the typical change in density is within desired windows
-            if (max_rel_change < tol_min) then
-                time_step = time_step * growth_factor
-                if (time_step > max_time_step) then ! do not let timestep diverge
-                    time_step = max_time_step
-                end if
-            else if (max_rel_change > tol_max) then
-                time_step = time_step / growth_factor
-            end if
+            call adapt_timestep(time_step, delta_density, fluid_density, number_block, &
+                                tol_min, tol_max, growth_factor, max_time_step)
         end if
 
         ! every check_interval iterations, check flux conservation
