@@ -23,7 +23,7 @@ program grid_model
     real(8) :: system_size_x
 
     real(8) :: flux, time_step, block_area_yz, block_volume_xyz, Na, max_time_step
-    real(8) :: left_mu, right_mu, density_edge, permeability_edge
+    real(8) :: left_mu, right_mu, inside_mu, density_edge, permeability_edge
     real(8) :: max_rel_change, tol_min, tol_max, growth_factor, net_flux
     real(8) :: force_edge, flux_edge, flux_mean, flux_std, flux_conservation
     real(8) :: time, conv_tol
@@ -42,7 +42,7 @@ program grid_model
 
     ! Declare a namelist and give the variables defaults
     namelist /params/ block_size_x, block_size_y, block_size_z, system_size_x, &
-                    time_step, max_time_step, left_mu, right_mu, mu_mode, n_iter, &
+                    time_step, max_time_step, left_mu, right_mu, inside_mu, mu_mode, n_iter, &
                     n_jump, check_interval, conv_tol, tol_min, tol_max, &
                     growth_factor, rho_spline_file, M_spline_file
 
@@ -74,8 +74,10 @@ program grid_model
     end if
     close(input_unit)
 
+    ! Unit conversion
     left_mu = left_mu * kcal_to_j
     right_mu = right_mu * kcal_to_j
+    inside_mu = inside_mu * kcal_to_j
 
     ! Load splines (replaces load_coeffs)
     call load_spline(trim(rho_spline_file), spl_rho)
@@ -125,7 +127,7 @@ program grid_model
     ! call generate_tables(left_mu, right_mu, 10, rho_vs_mu, deg2, M_vs_mu, deg4)
 
     ! Initialise the chemical potential profile within the pore
-    call init_mu_profile(chemical_potential, number_block, left_mu, right_mu, mu_mode)
+    call init_mu_profile(chemical_potential, number_block, left_mu, right_mu, inside_mu, mu_mode)
 
     ! Initialise the density profile within the pore
     ! call compute_rho_from_mu(fluid_density, chemical_potential, number_block, rho_vs_mu, deg2)
