@@ -19,7 +19,10 @@ program grid_model
     integer :: log_unit, data_unit, mu_mode, n_jump, check_interval, conv_unit
     integer :: input_unit, ios
 
-    real(8) :: flux, block_size, system_size, time_step, block_area, block_volume, Na, max_time_step
+    real(8) :: block_size_x, block_size_y, block_size_z
+    real(8) :: system_size_x
+
+    real(8) :: flux, time_step, block_area_yz, block_volume_xyz, Na, max_time_step
     real(8) :: left_mu, right_mu, density_edge, permeability_edge
     real(8) :: max_rel_change, tol_min, tol_max, growth_factor, net_flux
     real(8) :: force_edge, flux_edge, flux_mean, flux_std, flux_conservation
@@ -38,14 +41,16 @@ program grid_model
     real(8), parameter :: kcal_to_j = 4184.0d0
 
     ! Declare a namelist and give the variables defaults
-    namelist /params/ block_size, system_size, time_step, max_time_step, &
-                    left_mu, right_mu, mu_mode, n_iter, n_jump, &
-                    check_interval, conv_tol, tol_min, tol_max, growth_factor, &
-                    rho_spline_file, M_spline_file
+    namelist /params/ block_size_x, block_size_y, block_size_z, system_size_x, &
+                    time_step, max_time_step, left_mu, right_mu, mu_mode, n_iter, &
+                    n_jump, check_interval, conv_tol, tol_min, tol_max, &
+                    growth_factor, rho_spline_file, M_spline_file
 
     ! Set defaults (fallback if grid.in doesn't define them)
-    block_size = 1d-9
-    system_size = 100d-9
+    block_size_x = 1d-9
+    block_size_y = 1d-9
+    block_size_z = 1d-9
+    system_size_x = 100d-9
     time_step = 1e-15
     max_time_step = 1e-12
     left_mu = -9.5d0
@@ -77,11 +82,11 @@ program grid_model
     call load_spline(trim(M_spline_file),   spl_M)
 
     ! System definition
-    number_block = nint(system_size / block_size) ! nint, not int to avoid truncating
+    number_block = nint(system_size_x / block_size_x) ! nint, not int to avoid truncating
 
     number_edge = number_block - 1 ! number of edge = number of block  + 1 - number of reservoirs
-    block_area = block_size*block_size ! m**2
-    block_volume = block_size*block_size*block_size ! m**3
+    block_area_yz = block_size_y*block_size_z ! m**2
+    block_volume_xyz = block_size_x*block_size_y*block_size_z ! m**3
 
     ! Parameters
     Na = 6.022e23 ! mol-1
@@ -100,10 +105,10 @@ program grid_model
 
     ! Vector "position" along the pore
     do block = 1, number_block
-        block_centers(block) = (block-1) * block_size + block_size/2 ! in m
+        block_centers(block) = (block-1) * block_size_x + block_size_x/2 ! in m
     end do
     do edge = 1, number_edge
-        block_edges(edge) = (edge-1) * block_size ! in m
+        block_edges(edge) = (edge-1) * block_size_x ! in m
     end do
 
     ! Initial conditions (make sure this corresponds to the range simulated in MD)
@@ -174,7 +179,7 @@ program grid_model
         ! evaluate grad mu *before* any update of the chemical potential
         do block = 2, number_block
             edge = block-1
-            grad_mu(edge) = (chemical_potential(block) - chemical_potential(block-1)) / block_size ! [J/(mol·m)]
+            grad_mu(edge) = (chemical_potential(block) - chemical_potential(block-1)) / block_size_x ! [J/(mol·m)]
         end do
 
         ! evaluate permeability before any update
@@ -196,7 +201,7 @@ program grid_model
             block = edge + 1 
             density_edge = (fluid_density(block) + fluid_density(block-1))/2 ! m-3
             permeability_edge = (permeability(block) + permeability(block-1))/2 ! m-3
-            force_edge = -grad_mu(edge) * density_edge * block_volume / Na ! N
+            force_edge = -grad_mu(edge) * density_edge * block_volume_xyz / Na ! N
             flux_edge = permeability_edge * force_edge ! 1/s
             flux_edges(edge) = flux_edge
         end do
@@ -211,7 +216,7 @@ program grid_model
             net_flux = flux_edges(edge1) - flux_edges(edge2)
 
             ! Updated density based on the flux
-            delta_density(block) = net_flux * time_step / block_volume
+            delta_density(block) = net_flux * time_step / block_volume_xyz
             fluid_density(block) = fluid_density(block) + delta_density(block)
             
             ! Update the chemical potential

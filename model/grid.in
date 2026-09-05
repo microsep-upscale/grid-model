@@ -1,15 +1,26 @@
 &params
-block_size = 1d-9
-system_size = 100d-9
-time_step = 1e-15
-max_time_step = 1e-12
-left_mu = -9.5d0
-right_mu = -13.0d0
-mu_mode = 4
-n_iter = 500000000
-n_jump = 50000
-check_interval = 10000
-conv_tol = 1e-3
+! --- Geometry ---
+block_size_x = 1d-9     ! block size along x (transport direction), m
+block_size_y = 1d-9     ! cross-section height, m
+block_size_z = 1d-9     ! cross-section height, m
+system_size_x = 100d-9  ! total pore length, m
+
+! --- Time integration ---
+time_step = 1e-15       ! initial timestep, s
+max_time_step = 1e-12   ! cap on timestep growth, s
+
+! --- Boundary conditions ---
+left_mu = -9.5d0        ! left reservoir chemical potential, kcal/mol
+right_mu = -13.0d0      ! right reservoir chemical potential, kcal/mol
+mu_mode = 4             ! 1=linear, 2=left, 3=right, 4=left both ends/right inside
+
+! --- Run control ---
+n_iter = 500000000      ! max iterations
+n_jump = 50000          ! profile output interval
+check_interval = 10000  ! timestep/convergence check interval
+conv_tol = 1e-3         ! flux conservation convergence tolerance
+
+! --- Isotherm data ---
 rho_spline_file = "../data/calf/spline_rho_vs_mu.txt"
 M_spline_file = "../data/calf/spline_M_vs_mu.txt"
 /
