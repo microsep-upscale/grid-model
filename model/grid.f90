@@ -108,7 +108,7 @@ program grid_model
 
     ! Load splines
     call load_spline(trim(rho_spline_file), spl_rho)
-    call load_spline(trim(M_spline_file),   spl_M)
+    call load_spline(trim(M_spline_file), spl_M)
 
     ! System definition
     number_block = nint(system_size_x / block_size_x) ! nint, not int to avoid truncating
@@ -122,7 +122,7 @@ program grid_model
     allocate(chemical_potential(number_block))      ! J/mol
     allocate(fluid_density(number_block))           ! m^-3
     allocate(delta_density(number_block))           ! m^-3
-    allocate(permeability(number_block))            ! s/(kg·m)
+    allocate(permeability(number_block))            ! s/kg
 
     ! Quantities that are defined between cells (at the edges)
     allocate(block_edges(number_edge))              ! m
@@ -216,10 +216,9 @@ program grid_model
         do edge = 1, number_edge
             block = edge + 1 
             density_edge = (fluid_density(block) + fluid_density(block-1))/2        ! m^-3
-            permeability_edge = (permeability(block) + permeability(block-1))/2     ! s/(kg·m)
-            ! force_edge = -grad_mu(edge) * density_edge * block_volume_xyz / Na    ! N
-            force_edge = -grad_mu(edge) * density_edge * block_area_yz / Na         ! N
-            flux_edge = permeability_edge * force_edge                              ! s^-1
+            permeability_edge = (permeability(block) + permeability(block-1))/2     ! s/kg
+            force_edge = -grad_mu(edge) / Na                                        ! N (per-particle force)
+            flux_edge = permeability_edge * force_edge * density_edge * block_area_yz ! s^-1
             flux_edges(edge) = flux_edge
         end do
 
