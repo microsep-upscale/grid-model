@@ -10,4 +10,6 @@ n_iter = 500000000
 n_jump = 50000
 check_interval = 10000
 conv_tol = 1e-3
+rho_spline_file = "../data/calf/spline_rho_vs_mu.txt"
+M_spline_file = "../data/calf/spline_M_vs_mu.txt"
 /

@@ -24,6 +24,7 @@ program grid_model
     real(8) :: max_rel_change, tol_min, tol_max, growth_factor, net_flux
     real(8) :: force_edge, flux_edge, flux_mean, flux_std, flux_conservation
     real(8) :: time, conv_tol
+    character(len=256) :: rho_spline_file, M_spline_file
 
     real(8), allocatable :: block_centers(:)
     real(8), allocatable :: block_edges(:)
@@ -39,7 +40,8 @@ program grid_model
     ! Declare a namelist and give the variables defaults
     namelist /params/ block_size, system_size, time_step, max_time_step, &
                     left_mu, right_mu, mu_mode, n_iter, n_jump, &
-                    check_interval, conv_tol, tol_min, tol_max, growth_factor
+                    check_interval, conv_tol, tol_min, tol_max, growth_factor, &
+                    rho_spline_file, M_spline_file
 
     ! Set defaults (fallback if grid.in doesn't define them)
     block_size = 1d-9
@@ -56,6 +58,8 @@ program grid_model
     tol_min = 1e-7
     tol_max = 1e-5
     growth_factor = 1.1
+    rho_spline_file = "../data/calf/spline_rho_vs_mu.txt"
+    M_spline_file   = "../data/calf/spline_M_vs_mu.txt"
 
     open(newunit=input_unit, file="grid.in", status="old", action="read")
     read(input_unit, nml=params, iostat=ios)
@@ -68,13 +72,9 @@ program grid_model
     left_mu = left_mu * kcal_to_j
     right_mu = right_mu * kcal_to_j
 
-    ! ! Load coefficients
-    ! call load_coeffs("../data/T84/rho_vs_mu_fit.txt", rho_vs_mu, deg2)
-    ! call load_coeffs("../data/T84/M_vs_mu_fit.txt", M_vs_mu, deg4)
-
     ! Load splines (replaces load_coeffs)
-    call load_spline("../data/calf/spline_rho_vs_mu.txt", spl_rho)
-    call load_spline("../data/calf/spline_M_vs_mu.txt",   spl_M)
+    call load_spline(trim(rho_spline_file), spl_rho)
+    call load_spline(trim(M_spline_file),   spl_M)
 
     ! System definition
     number_block = nint(system_size / block_size) ! nint, not int to avoid truncating
