@@ -71,6 +71,9 @@ program grid_model
     rho_spline_file = "../data/calf/spline_rho_vs_mu.txt"
     M_spline_file   = "../data/calf/spline_M_vs_mu.txt"
     output_dir = "output"
+    inside_mu = -13.0d0
+    steady_tol = 1d-6
+    n_steady = 5
 
     open(newunit=input_unit, file="grid.in", status="old", action="read")
     read(input_unit, nml=params, iostat=ios)
@@ -159,6 +162,7 @@ program grid_model
 
     steady_count = 0
     prev_mean_density = -1d0
+    flux_mean = 0d0
 
     do while (iter < n_iter)
 
@@ -177,7 +181,7 @@ program grid_model
             ! log per iteration
             write(log_unit,*) "iter =", iter
             ! terminal progress
-            write(*,'(A,I10,A,F6.1,A,ES10.3,A,ES10.3)') &
+            write(*,'(A,I10,A,ES10.3,A,ES10.3)') &
                 "  iter=", iter, &
                 "  dt=", time_step, &
                 "  flux_mean=", flux_mean
@@ -230,31 +234,41 @@ program grid_model
             ! chemical_potential(block) = invert_poly2(fluid_density(block), rho_vs_mu)
             chemical_potential(block) = invert_spline(fluid_density(block), spl_rho)
 
-            ! guard against out-of-range density before inversion
-            if (fluid_density(block) <= 0d0) then
-                write(*,*) "Negative density at iter =", iter, " block =", block
-                exit
-            end if
-
         end do
 
         ! check for NaN values
-        do i = 2, number_block-1
-            if (isnan(fluid_density(i)) .or. isnan(chemical_potential(i))) then
-                write(*,*) "NaN detected at iter =", iter, " block =", i
-                write(*,*)
-                write(*,*) "  delta_density  =", delta_density
-                write(*,*)
-                write(*,*) "  fluid_density  =", fluid_density
-                write(*,*)
-                write(*,*) "  chemical_potential =", chemical_potential
-                write(*,*)
-                write(*,*) "  time_step      =", time_step
-                write(*,*)
-                write(log_unit,*) "NaN detected at iter =", iter, " block =", i, " — stopping"
-                stop "NaN detected — simulation aborted"
-            end if
-        end do
+        if (mod(iter, check_interval) == 0) then
+
+            ! check for NaN values
+            do i = 2, number_block-1
+                if (isnan(fluid_density(i)) .or. isnan(chemical_potential(i))) then
+                    write(*,*) "NaN detected at iter =", iter, " block =", i
+                    write(*,*)
+                    write(*,*) "  delta_density  =", delta_density
+                    write(*,*)
+                    write(*,*) "  fluid_density  =", fluid_density
+                    write(*,*)
+                    write(*,*) "  chemical_potential =", chemical_potential
+                    write(*,*)
+                    write(*,*) "  time_step      =", time_step
+                    write(*,*)
+                    write(log_unit,*) "NaN detected at iter =", iter, " block =", i, " — stopping"
+                    stop "NaN detected — simulation aborted"
+                end if
+            end do
+
+            ! check for negative density
+            do i = 2, number_block-1
+                if (fluid_density(i) <= 0d0) then
+                    write(*,*) "Negative density at iter =", iter, " block =", i
+                    write(*,*) "  delta_density  =", delta_density(i)
+                    write(*,*) "  time_step      =", time_step
+                    write(log_unit,*) "Negative density at iter =", iter, " block =", i, " — stopping"
+                    stop "Negative density — simulation aborted"
+                end if
+            end do
+
+        end if
 
         ! Adapt timestep very "check_interval"
         if (mod(iter, check_interval) == 0) then
