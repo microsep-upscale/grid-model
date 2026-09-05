@@ -23,7 +23,7 @@ program grid_model
     real(8) :: block_size_x, block_size_y, block_size_z
     real(8) :: system_size_x
 
-    real(8) :: time_step, block_area_yz, block_volume_xyz, Na, max_time_step
+    real(8) :: time_step, block_area_yz, block_volume_xyz, max_time_step
     real(8) :: left_mu, right_mu, inside_mu, density_edge, permeability_edge
     real(8) :: tol_min, tol_max, growth_factor, net_flux
     real(8) :: force_edge, flux_edge, flux_mean, flux_std, flux_conservation
@@ -41,8 +41,10 @@ program grid_model
     real(8), allocatable :: flux_edges(:)
     real(8), allocatable :: grad_mu(:)
 
-    real(8), parameter :: kcal_to_j = 4184.0d0
-    real(8), parameter :: mu_equal_tol = 1d-6  ! J/mol; below this, treat left_mu = right_mu
+    ! Parameters
+    real(8), parameter :: Na = 6.022e23             ! mol-1
+    real(8), parameter :: kcal_to_j = 4184.0d0      ! J/kcal
+    real(8), parameter :: mu_equal_tol = 1d-6       ! J/mol
 
     ! Declare a namelist and give the variables defaults
     namelist /params/ block_size_x, block_size_y, block_size_z, system_size_x, &
@@ -52,28 +54,39 @@ program grid_model
                     output_dir
 
     ! Set defaults (fallback if grid.in doesn't define them)
-    block_size_x = 1d-9
-    block_size_y = 1d-9
-    block_size_z = 1d-9
-    system_size_x = 100d-9
-    time_step = 1e-15
-    max_time_step = 1e-12
-    left_mu = -9.5d0
-    right_mu = -13.0d0
-    mu_mode = 4
+    ! --- Geometry ---
+    block_size_x = 1d-9         ! m
+    block_size_y = 1d-9         ! m
+    block_size_z = 1d-9         ! m
+    system_size_x = 100d-9      ! m
+
+    ! --- Time integration ---
+    time_step = 1e-15           ! s
+    max_time_step = 1e-12       ! s
+
+    ! --- Boundary conditions ---
+    left_mu = -9.5d0            ! kcal/mol
+    inside_mu = -11d0           ! kcal/mol
+    right_mu = -13.0d0          ! kcal/mol
+    mu_mode = 1
+
+    ! --- Run control ---
     n_iter = 500000000_8
-    n_jump = 50000
+    n_jump = 500000
     check_interval = 10000
     conv_tol = 1e-3
     tol_min = 1e-7
     tol_max = 1e-5
     growth_factor = 1.1
-    rho_spline_file = "../data/calf/spline_rho_vs_mu.txt"
-    M_spline_file   = "../data/calf/spline_M_vs_mu.txt"
-    output_dir = "output"
-    inside_mu = -13.0d0
     steady_tol = 1d-6
     n_steady = 5
+
+    ! --- Isotherm data ---
+    rho_spline_file = "../data/calf/spline_rho_vs_mu.txt"
+    M_spline_file   = "../data/calf/spline_M_vs_mu.txt"
+
+    ! --- Output ---
+    output_dir = "output"
 
     open(newunit=input_unit, file="grid.in", status="old", action="read")
     read(input_unit, nml=params, iostat=ios)
@@ -85,39 +98,36 @@ program grid_model
     call execute_command_line("mkdir -p " // trim(output_dir))
 
     ! Unit conversion
-    left_mu = left_mu * kcal_to_j
-    right_mu = right_mu * kcal_to_j
-    inside_mu = inside_mu * kcal_to_j
+    left_mu = left_mu * kcal_to_j       ! J/mol
+    right_mu = right_mu * kcal_to_j     ! J/mol
+    inside_mu = inside_mu * kcal_to_j   ! J/mol
 
     ! Decide once which stopping criterion applies: symmetric reservoirs
     ! give flux_mean -> 0, so flux-conservation can never converge there.
     use_steady_state = (abs(right_mu - left_mu) < mu_equal_tol)
 
-    ! Load splines (replaces load_coeffs)
+    ! Load splines
     call load_spline(trim(rho_spline_file), spl_rho)
     call load_spline(trim(M_spline_file),   spl_M)
 
     ! System definition
     number_block = nint(system_size_x / block_size_x) ! nint, not int to avoid truncating
 
-    number_edge = number_block - 1 ! number of edge = number of block  + 1 - number of reservoirs
-    block_area_yz = block_size_y*block_size_z ! m**2
-    block_volume_xyz = block_size_x*block_size_y*block_size_z ! m**3
-
-    ! Parameters
-    Na = 6.022e23 ! mol-1
+    number_edge = number_block - 1                  ! number of edge = number of block  + 1 - number of reservoirs
+    block_area_yz = block_size_y*block_size_z       ! m^2
+    block_volume_xyz = block_size_x*block_area_yz   ! m^3
 
     ! Quantities that are define within cell
-    allocate(block_centers(number_block))
-    allocate(chemical_potential(number_block)) ! J/mol
-    allocate(fluid_density(number_block)) ! m-3
-    allocate(delta_density(number_block)) ! m-3
-    allocate(permeability(number_block)) ! s/kg/m
+    allocate(block_centers(number_block))           ! m
+    allocate(chemical_potential(number_block))      ! J/mol
+    allocate(fluid_density(number_block))           ! m^-3
+    allocate(delta_density(number_block))           ! m^-3
+    allocate(permeability(number_block))            ! s/(kg·m)
 
     ! Quantities that are defined between cells (at the edges)
-    allocate(block_edges(number_edge))
-    allocate(grad_mu(number_edge)) ! J/(mol·m)
-    allocate(flux_edges(number_edge)) ! s-1
+    allocate(block_edges(number_edge))              ! m
+    allocate(grad_mu(number_edge))                  ! J/(mol·m)
+    allocate(flux_edges(number_edge))               ! s^-1
 
     ! Vector "position" along the pore
     do block = 1, number_block
@@ -158,7 +168,7 @@ program grid_model
     end if
     
     iter = 0
-    time = 0d0 ! in seconde
+    time = 0d0
 
     steady_count = 0
     prev_mean_density = -1d0
@@ -167,7 +177,7 @@ program grid_model
     do while (iter < n_iter)
 
         iter = iter + 1
-        time = time + time_step ! in second
+        time = time + time_step         ! s
 
         ! outputs
         if (mod(iter, n_jump) == 0) then
@@ -190,19 +200,14 @@ program grid_model
         ! evaluate grad mu *before* any update of the chemical potential
         do block = 2, number_block
             edge = block-1
-            grad_mu(edge) = (chemical_potential(block) - chemical_potential(block-1)) / block_size_x ! [J/(mol·m)]
+            grad_mu(edge) = (chemical_potential(block) - chemical_potential(block-1)) / block_size_x ! J/(mol·m)
         end do
 
         ! evaluate permeability before any update
         ! Important note: the value of permeability for block=1 and block=n is wrong,
         ! in practice, it should be calculated from a theory accounting for entrance effects
-        ! This will be done someday
 
-        ! Polynomial
-        ! do block = 1, number_block
-        !     permeability(block) = poly_fit(chemical_potential(block), M_vs_mu, deg4) ! [s/kg/m]
-        ! end do
-        ! Spline
+        ! Use eval spline
         do block = 1, number_block
             permeability(block) = eval_spline(chemical_potential(block), spl_M)
         end do
@@ -210,10 +215,11 @@ program grid_model
         ! 
         do edge = 1, number_edge
             block = edge + 1 
-            density_edge = (fluid_density(block) + fluid_density(block-1))/2 ! m-3
-            permeability_edge = (permeability(block) + permeability(block-1))/2 ! m-3
-            force_edge = -grad_mu(edge) * density_edge * block_volume_xyz / Na ! N
-            flux_edge = permeability_edge * force_edge ! 1/s
+            density_edge = (fluid_density(block) + fluid_density(block-1))/2        ! m^-3
+            permeability_edge = (permeability(block) + permeability(block-1))/2     ! s/(kg·m)
+            ! force_edge = -grad_mu(edge) * density_edge * block_volume_xyz / Na    ! N
+            force_edge = -grad_mu(edge) * density_edge * block_area_yz / Na         ! N
+            flux_edge = permeability_edge * force_edge                              ! s^-1
             flux_edges(edge) = flux_edge
         end do
 
@@ -224,15 +230,15 @@ program grid_model
             edge2 = block
 
             ! Net flux in the block is the sum over the two edges
-            net_flux = flux_edges(edge1) - flux_edges(edge2)
+            net_flux = flux_edges(edge1) - flux_edges(edge2)                            ! s^-1
 
             ! Updated density based on the flux
-            delta_density(block) = net_flux * time_step / block_volume_xyz
-            fluid_density(block) = fluid_density(block) + delta_density(block)
+            delta_density(block) = net_flux * time_step / block_volume_xyz              ! m^-3
+            fluid_density(block) = fluid_density(block) + delta_density(block)          ! m^-3
             
             ! Update the chemical potential
             ! chemical_potential(block) = invert_poly2(fluid_density(block), rho_vs_mu)
-            chemical_potential(block) = invert_spline(fluid_density(block), spl_rho)
+            chemical_potential(block) = invert_spline(fluid_density(block), spl_rho)    ! J/mol
 
         end do
 
@@ -268,12 +274,10 @@ program grid_model
                 end if
             end do
 
-        end if
+            ! Adapt timestep very "check_interval"
+                call adapt_timestep(time_step, delta_density, fluid_density, number_block, &
+                                    tol_min, tol_max, growth_factor, max_time_step)
 
-        ! Adapt timestep very "check_interval"
-        if (mod(iter, check_interval) == 0) then
-            call adapt_timestep(time_step, delta_density, fluid_density, number_block, &
-                                tol_min, tol_max, growth_factor, max_time_step)
         end if
 
         ! every check_interval iterations, check for convergence
