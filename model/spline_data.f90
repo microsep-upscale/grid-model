@@ -10,6 +10,9 @@ module spline_data
     real(8), allocatable :: c1(:)      ! linear term
     real(8), allocatable :: c2(:)      ! quadratic term
     real(8), allocatable :: c3(:)      ! cubic term
+    real(8), allocatable :: y_left(:)  ! cached y at x_left, for fast interval search
+    real(8), allocatable :: y_right(:) ! cached y at x_right
+    logical :: monotone                ! true if y_left is strictly monotone
   end type spline_t
 
 end module spline_data

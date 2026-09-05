@@ -7,14 +7,8 @@ from scipy.interpolate import CubicSpline
 from scipy.optimize import brentq
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-h = 1e-9
-volume = 4e-9 * 4e-9 * h
-area = 4e-9 * h
-m = 40e-3
 Na = 6.022e23
 kcal_to_j = 4184.0
-f0_real = 0.01
-f0_SI = f0_real * kcal_to_j * 1e10 / Na
 
 # ── Load MD data ───────────────────────────────────────────────────────────────
 md_data = np.loadtxt("number_and_v_vs_mu.dat")
@@ -88,7 +82,7 @@ axes[0].legend()
 axes[1].scatter(mu_SI, M_SI, s=20, color="black", zorder=5, label="Data")
 axes[1].plot(mu_grid, M_fwd, color="tab:green", label="forward")
 axes[1].set_xlabel("mu (J/mol)")
-axes[1].set_ylabel("M (s/kg/m)")
+axes[1].set_ylabel("M (s/kg)")
 axes[1].set_title("M(mu) — forward")
 axes[1].set_yscale("log")
 axes[1].legend()

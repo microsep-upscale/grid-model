@@ -9,13 +9,13 @@ contains
 
     ! Initialize chemical potential profile across the grid.
     ! Supports linear gradient or uniform values set to left/right reservoir.
-    subroutine init_mu_profile(mu, n, left_mu, right_mu, mode)
+    subroutine init_mu_profile(mu, n, left_mu, right_mu, inside_mu, mode)
         implicit none
 
         real(8), intent(out) :: mu(:)
         integer, intent(in) :: n
-        real(8), intent(in) :: left_mu, right_mu
-        integer, intent(in) :: mode   ! 1=linear, 2=left, 3=right, 4=step
+        real(8), intent(in) :: left_mu, right_mu, inside_mu
+        integer, intent(in) :: mode   ! 1=linear, 2=step
 
         integer :: i
 
@@ -33,18 +33,8 @@ contains
                         (i-1) / real(n-1,8)
 
             case (2)
-                ! left reservoir
-                mu(i) = left_mu
-
-            case (3)
-                ! right reservoir
-                mu(i) = right_mu
-
-            case (4)
-                ! right reservoir
-                mu(i) = right_mu          
-                mu(1) = left_mu
-                mu(n) = left_mu
+                ! constant inside value
+                mu(i) = inside_mu          
 
             case default
                 stop "Unknown mu initialization mode"
