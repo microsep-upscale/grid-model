@@ -26,8 +26,8 @@ tol_min = 1e-7
 tol_max = 1e-5
 
 ! --- Isotherm data ---
-rho_spline_file = "../data/T300/h1.0/spline_rho_vs_mu.txt"
-M_spline_file = "../data/T300/h1.0/spline_M_vs_mu.txt"
+rho_spline_file = "../data/single-phase/lj-T300/h1.0/spline_rho_vs_mu.txt"
+M_spline_file = "../data/single-phase/lj-T300/h1.0/spline_M_vs_mu.txt"
 
 ! --- Output ---
 output_dir = "output_0.1"   ! directory for logs, conservation.dat, and profile files
