@@ -28,4 +28,7 @@ $FC $FCFLAGS -c run_binary_fluid_mod.f90
 $FC $FCFLAGS -c grid.f90
 
 # link
-$FC coeff_io.o poly_fit.o io_profiles.o init_profiles.o tables_io.o spline_io.o spline_eval.o spline_data.o grid.o timestep_control.o run_single_fluid_mod.o convergence_control.o -o grid
+$FC coeff_io.o poly_fit.o io_profiles.o init_profiles.o tables_io.o spline_io.o spline_eval.o spline_data.o \
+    table2d_data.o table2d_eval.o table2d_io.o \
+    grid.o timestep_control.o run_single_fluid_mod.o run_binary_fluid_mod.o convergence_control.o \
+    -o grid

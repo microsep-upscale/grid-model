@@ -3,9 +3,6 @@ module run_binary_fluid_mod
     use table2d_data
     use table2d_io
     use table2d_eval
-    use spline_data
-    use spline_io
-    use spline_eval
     use init_profiles
     use timestep_control
     use convergence_control
@@ -22,7 +19,7 @@ contains
                                  left_muB_in, right_muB_in, inside_muB_in, mu_mode, &
                                  n_iter, n_jump, check_interval, conv_tol, &
                                  tol_min, tol_max, growth_factor, &
-                                 table2d_dir, MA_spline_file, MB_spline_file, &
+                                 table2d_dir, &
                                  steady_tol, n_steady, output_dir)
 
         implicit none
@@ -38,28 +35,24 @@ contains
         integer, intent(in) :: n_jump, check_interval
         real(8), intent(in) :: conv_tol, tol_min, tol_max, growth_factor
         character(len=*), intent(in) :: table2d_dir
-        character(len=*), intent(in) :: MA_spline_file, MB_spline_file
         real(8), intent(in) :: steady_tol
         integer, intent(in) :: n_steady
         character(len=*), intent(in) :: output_dir
 
         ! ---- local state ----
         type(table2d_t) :: tbl
-        type(spline_t)  :: spl_MA, spl_MB   ! diagonal mobilities: M_A(muA), M_B(muB)
 
         integer(kind=8) :: iter
         integer :: number_block, number_edge, i, block, edge, edge1, edge2
         integer :: log_unit, conv_unit, steady_count
-        integer :: profile_unit
 
         real(8) :: block_area_yz, block_volume_xyz
         real(8) :: time_step, time_step_A, time_step_B
         real(8) :: left_muA, right_muA, inside_muA
         real(8) :: left_muB, right_muB, inside_muB
-        real(8) :: densityA_edge, densityB_edge
-        real(8) :: permA_edge, permB_edge
         real(8) :: net_flux_A, net_flux_B
         real(8) :: force_edge_A, force_edge_B, flux_edge_A, flux_edge_B
+        real(8) :: mAA_edge, mAB_edge, mBB_edge
         real(8) :: flux_mean_A, flux_std_A, flux_conservation_A
         real(8) :: flux_mean_B, flux_std_B, flux_conservation_B
         real(8) :: time, prev_mean_density_A, prev_mean_density_B
@@ -71,7 +64,7 @@ contains
         real(8), allocatable :: muA_field(:), muB_field(:)
         real(8), allocatable :: rhoA_field(:), rhoB_field(:)
         real(8), allocatable :: delta_rhoA(:), delta_rhoB(:)
-        real(8), allocatable :: permeability_A(:), permeability_B(:)
+        real(8), allocatable :: mAA_block(:), mAB_block(:), mBB_block(:)
         real(8), allocatable :: flux_edges_A(:), flux_edges_B(:)
         real(8), allocatable :: grad_muA(:), grad_muB(:)
         real(8), allocatable :: p_dummy(:)   ! forward-eval also returns p; not used in dynamics
@@ -97,10 +90,8 @@ contains
         use_steady_state = (abs(right_muA - left_muA) < mu_equal_tol) .and. &
                             (abs(right_muB - left_muB) < mu_equal_tol)
 
-        ! Load 2D equation-of-state table and diagonal mobility splines
+        ! Load 2D equation-of-state and Onsager mobility-matrix table
         call load_table2d(trim(table2d_dir), tbl)
-        call load_spline(trim(MA_spline_file), spl_MA)
-        call load_spline(trim(MB_spline_file), spl_MB)
 
         ! System definition
         number_block = nint(system_size_x / block_size_x)
@@ -112,7 +103,7 @@ contains
         allocate(muA_field(number_block), muB_field(number_block))
         allocate(rhoA_field(number_block), rhoB_field(number_block))
         allocate(delta_rhoA(number_block), delta_rhoB(number_block))
-        allocate(permeability_A(number_block), permeability_B(number_block))
+        allocate(mAA_block(number_block), mAB_block(number_block), mBB_block(number_block))
         allocate(p_dummy(number_block))
 
         allocate(block_edges(number_edge))
@@ -137,7 +128,7 @@ contains
         end do
 
         flux_edges_A = 0.0d0; flux_edges_B = 0.0d0
-        permeability_A = 0.0d0; permeability_B = 0.0d0
+        mAA_block = 0.0d0; mAB_block = 0.0d0; mBB_block = 0.0d0
         grad_muA = 0.0d0; grad_muB = 0.0d0
         delta_rhoA = 0.0d0; delta_rhoB = 0.0d0
 
@@ -321,7 +312,7 @@ contains
                                                 block_centers, block_edges, &
                                                 muA_field, muB_field, &
                                                 rhoA_field, rhoB_field, &
-                                                permeability_A, permeability_B, &
+                                                mAA_block, mAB_block, mBB_block, &
                                                 flux_edges_A, flux_edges_B, &
                                                 grad_muA, grad_muB, &
                                                 number_block, number_edge, output_dir, &
@@ -350,7 +341,7 @@ contains
     ! ------------------------------------------------------------
     subroutine write_profiles_binary(snap_index, time, block_centers, block_edges, &
                                       muA_field, muB_field, rhoA_field, rhoB_field, &
-                                      permeability_A, permeability_B, &
+                                      mAA_block, mAB_block, mBB_block, &
                                       flux_edges_A, flux_edges_B, &
                                       grad_muA, grad_muB, &
                                       number_block, number_edge, output_dir, label)
@@ -360,7 +351,7 @@ contains
         real(8), intent(in) :: block_centers(number_block), block_edges(number_edge)
         real(8), intent(in) :: muA_field(number_block), muB_field(number_block)
         real(8), intent(in) :: rhoA_field(number_block), rhoB_field(number_block)
-        real(8), intent(in) :: permeability_A(number_block), permeability_B(number_block)
+        real(8), intent(in) :: mAA_block(number_block), mAB_block(number_block), mBB_block(number_block)
         real(8), intent(in) :: flux_edges_A(number_edge), flux_edges_B(number_edge)
         real(8), intent(in) :: grad_muA(number_edge), grad_muB(number_edge)
         character(len=*), intent(in) :: output_dir
@@ -379,11 +370,11 @@ contains
         filename = trim(output_dir)//"/profile_block_"//trim(tag)//".dat"
         open(newunit=unit, file=trim(filename), status="replace", action="write")
         write(unit,*) "# time =", time, " s"
-        write(unit,*) "# x[m]  muA[J/mol]  muB[J/mol]  rhoA[m^-3]  rhoB[m^-3]  M_A  M_B"
+        write(unit,*) "# x[m]  muA[J/mol]  muB[J/mol]  rhoA[m^-3]  rhoB[m^-3]  M_AA  M_AB  M_BB"
         do i = 1, number_block
-            write(unit,'(7ES16.8)') block_centers(i), muA_field(i), muB_field(i), &
+            write(unit,'(8ES16.8)') block_centers(i), muA_field(i), muB_field(i), &
                                      rhoA_field(i), rhoB_field(i), &
-                                     permeability_A(i), permeability_B(i)
+                                     mAA_block(i), mAB_block(i), mBB_block(i)
         end do
         close(unit)
 

@@ -30,10 +30,9 @@ contains
 
   end subroutine locate_cell
 
-  real(8) function bilinear(field, tbl, iA, iB, tA, tB) result(val)
+  real(8) function bilinear(field, iA, iB, tA, tB) result(val)
     implicit none
     real(8),         intent(in) :: field(:,:)
-    type(table2d_t), intent(in) :: tbl
     integer,         intent(in) :: iA, iB
     real(8),         intent(in) :: tA, tB
 
@@ -55,9 +54,9 @@ contains
 
     call locate_cell(muA_q, muB_q, tbl, iA, iB, tA, tB)
 
-    rhoA_q = bilinear(tbl%rhoA, tbl, iA, iB, tA, tB)
-    rhoB_q = bilinear(tbl%rhoB, tbl, iA, iB, tA, tB)
-    p_q    = bilinear(tbl%p,    tbl, iA, iB, tA, tB)
+    rhoA_q = bilinear(tbl%rhoA, iA, iB, tA, tB)
+    rhoB_q = bilinear(tbl%rhoB, iA, iB, tA, tB)
+    p_q    = bilinear(tbl%p, iA, iB, tA, tB)
 
   end subroutine eval_forward
 
@@ -73,10 +72,10 @@ contains
 
     call locate_cell(muA_q, muB_q, tbl, iA, iB, tA, tB)
 
-    a = bilinear(tbl%dA_dA, tbl, iA, iB, tA, tB)
-    b = bilinear(tbl%dA_dB, tbl, iA, iB, tA, tB)
-    c = bilinear(tbl%dB_dA, tbl, iA, iB, tA, tB)
-    d = bilinear(tbl%dB_dB, tbl, iA, iB, tA, tB)
+    a = bilinear(tbl%dA_dA, iA, iB, tA, tB)
+    b = bilinear(tbl%dA_dB, iA, iB, tA, tB)
+    c = bilinear(tbl%dB_dA, iA, iB, tA, tB)
+    d = bilinear(tbl%dB_dB, iA, iB, tA, tB)
 
   end subroutine eval_jacobian
 
@@ -91,9 +90,9 @@ contains
 
     call locate_cell(muA_q, muB_q, tbl, iA, iB, tA, tB)
 
-    mAA = bilinear(tbl%M_AA, tbl, iA, iB, tA, tB)
-    mAB = bilinear(tbl%M_AB, tbl, iA, iB, tA, tB)
-    mBB = bilinear(tbl%M_BB, tbl, iA, iB, tA, tB)
+    mAA = bilinear(tbl%M_AA, iA, iB, tA, tB)
+    mAB = bilinear(tbl%M_AB, iA, iB, tA, tB)
+    mBB = bilinear(tbl%M_BB, iA, iB, tA, tB)
 
   end subroutine eval_mobility
 

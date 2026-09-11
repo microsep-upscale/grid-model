@@ -28,17 +28,29 @@ program grid_model
     real(8) :: system_size_x
 
     real(8) :: time_step, max_time_step
-    real(8) :: left_mu, right_mu, inside_mu
     real(8) :: tol_min, tol_max, growth_factor
     real(8) :: conv_tol, steady_tol
-    character(len=256) :: rho_spline_file, M_spline_file, output_dir
+    character(len=256) :: output_dir
+
+    ! --- single-fluid boundary conditions ---
+    real(8) :: left_mu, right_mu, inside_mu
+    character(len=256) :: rho_spline_file, M_spline_file
+
+    ! --- binary-fluid boundary conditions ---
+    real(8) :: left_muA, right_muA, inside_muA
+    real(8) :: left_muB, right_muB, inside_muB
+    character(len=256) :: table2d_dir
 
     ! Declare a namelist and give the variables defaults
-    namelist /params/ block_size_x, block_size_y, block_size_z, system_size_x, &
-                    time_step, max_time_step, left_mu, right_mu, inside_mu, mu_mode, n_iter, &
+    namelist /params/ fluid_mode, &
+                    block_size_x, block_size_y, block_size_z, system_size_x, &
+                    time_step, max_time_step, mu_mode, n_iter, &
                     n_jump, check_interval, conv_tol, tol_min, tol_max, &
-                    growth_factor, rho_spline_file, M_spline_file, steady_tol, n_steady, &
-                    output_dir
+                    growth_factor, steady_tol, n_steady, output_dir, &
+                    left_mu, right_mu, inside_mu, rho_spline_file, M_spline_file, &
+                    left_muA, right_muA, inside_muA, &
+                    left_muB, right_muB, inside_muB, &
+                    table2d_dir
 
     ! Set defaults (fallback if grid.in doesn't define them)
 
@@ -72,12 +84,25 @@ program grid_model
     steady_tol = 1d-6
     n_steady = 5
 
-    ! --- Isotherm data ---
-    rho_spline_file = "../data/single-phase/lj-T300/h1.0/spline_rho_vs_mu.txt"
-    M_spline_file = "../data/single-phase/lj-T300/h1.0/spline_M_vs_mu.txt"
-
     ! --- Output ---
     output_dir = "output"
+
+    ! --- Single-fluid defaults ---
+    left_mu = -9.5d0
+    inside_mu = -11d0
+    right_mu = -13.0d0
+    mu_mode = 1
+    rho_spline_file = "../data/single-phase/lj-T300/h1.0/spline_rho_vs_mu.txt"
+    M_spline_file   = "../data/single-phase/lj-T300/h1.0/spline_M_vs_mu.txt"
+
+    ! --- Binary-fluid defaults ---
+    left_muA   = -9.5d0
+    inside_muA = -11d0
+    right_muA  = -13.0d0
+    left_muB   = -9.5d0
+    inside_muB = -11d0
+    right_muB  = -13.0d0
+    table2d_dir = "../data/two-phase/lj-slit"
 
     open(newunit=input_unit, file="grid.in", status="old", action="read")
     read(input_unit, nml=params, iostat=ios)
