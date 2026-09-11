@@ -1,4 +1,6 @@
 &params
+fluid_mode = 2
+
 ! --- Geometry ---
 block_size_x = 0.1d-9     ! block size along x (transport direction), m
 block_size_y = 10d-9     ! cross-section height, m
@@ -10,9 +12,12 @@ time_step = 1e-15       ! initial timestep, s
 max_time_step = 1e-10   ! cap on timestep growth, s
 
 ! --- Boundary conditions ---
-left_mu = -1d0        ! left reservoir chemical potential, kcal/mol
-inside_mu = -10d0       ! inside the pore, kcal/mol (only usefull when mu_mode = 1)
-right_mu = -10.0d0      ! right reservoir chemical potential, kcal/mol
+left_muA = -1d0        ! left reservoir chemical potential, kcal/mol
+inside_muA = -10d0       ! inside the pore, kcal/mol (only usefull when mu_mode = 1)
+right_muA = -10.0d0      ! right reservoir chemical potential, kcal/mol
+left_muB = -1d0        ! only for mixture : left reservoir chemical potential, kcal/mol
+inside_muB = -10d0       ! only for mixture :  inside the pore, kcal/mol (only usefull when mu_mode = 1)
+right_muB = -10.0d0      ! only for mixture :  right reservoir chemical potential, kcal/mol
 mu_mode = 1             ! 1=linear slope, 2=constant mu inside using inside_mu
 
 ! --- Run control ---
@@ -26,8 +31,21 @@ tol_min = 1e-7
 tol_max = 1e-5
 
 ! --- Isotherm data ---
+! Simple fluid
 rho_spline_file = "../data/single-phase/lj-T300/h1.0/spline_rho_vs_mu.txt"
 M_spline_file = "../data/single-phase/lj-T300/h1.0/spline_M_vs_mu.txt"
+
+! Binary fluid
+! table2d_dir points at the actual reconstructed EOS data —
+! confirmed to contain muA_45x45.dat, muB_45x45.dat,
+! rhoA/rhoB_reconstructed_LS_45x45.dat, p_reconstructed_LS_45x45.dat,
+! f_reconstructed_LS_45x45.dat, and safe_mask_45x45.dat.
+table2d_dir = "../data/two-phase/lj-slit"
+! MA/MB spline files do NOT exist yet in that directory — this path
+! is a deliberate placeholder so load_spline fails loudly rather than
+! silently reading nothing, until those splines are generated.
+MA_spline_file = "../data/two-phase/lj-slit/spline_MA_vs_muA.txt"
+MB_spline_file = "../data/two-phase/lj-slit/spline_MB_vs_muB.txt"
 
 ! --- Output ---
 output_dir = "output_0.1"   ! directory for logs, conservation.dat, and profile files

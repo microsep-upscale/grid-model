@@ -80,6 +80,23 @@ contains
 
   end subroutine eval_jacobian
 
+  ! bilinear lookup of the mobility matrix at a query point
+  subroutine eval_mobility(muA_q, muB_q, tbl, mAA, mAB, mBB)
+    implicit none
+    real(8),         intent(in)  :: muA_q, muB_q
+    type(table2d_t), intent(in)  :: tbl
+    real(8),         intent(out) :: mAA, mAB, mBB
+    integer :: iA, iB
+    real(8) :: tA, tB
+
+    call locate_cell(muA_q, muB_q, tbl, iA, iB, tA, tB)
+
+    mAA = bilinear(tbl%M_AA, tbl, iA, iB, tA, tB)
+    mAB = bilinear(tbl%M_AB, tbl, iA, iB, tA, tB)
+    mBB = bilinear(tbl%M_BB, tbl, iA, iB, tA, tB)
+
+  end subroutine eval_mobility
+
   ! Inverse map: (rhoA,rhoB) -> (muA,muB) via damped 2D Newton,
   ! warm-started from (muA_guess,muB_guess). Fortran analogue of
   ! mu_from_rho() in the Python reference implementation.

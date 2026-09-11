@@ -20,7 +20,11 @@ $FC $FCFLAGS -c init_profiles.f90
 $FC $FCFLAGS -c tables_io.f90
 $FC $FCFLAGS -c timestep_control.f90
 $FC $FCFLAGS -c convergence_control.f90
+$FC $FCFLAGS -c table2d_data.f90
+$FC $FCFLAGS -c table2d_eval.f90
+$FC $FCFLAGS -c table2d_io.f90
 $FC $FCFLAGS -c run_single_fluid_mod.f90
+$FC $FCFLAGS -c run_binary_fluid_mod.f90
 $FC $FCFLAGS -c grid.f90
 
 # link

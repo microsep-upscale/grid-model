@@ -39,6 +39,12 @@ contains
     call read_matrix(trim(dir)//"/rhoB_reconstructed_LS_45x45.dat", tbl%rhoB, tbl%nA, tbl%nB)
     call read_matrix(trim(dir)//"/p_reconstructed_LS_45x45.dat",    tbl%p,    tbl%nA, tbl%nB)
 
+    allocate(tbl%M_AA(tbl%nA,tbl%nB), tbl%M_AB(tbl%nA,tbl%nB), tbl%M_BB(tbl%nA,tbl%nB))
+
+    call read_matrix(trim(dir)//"/M_AA_45x45.dat", tbl%M_AA, tbl%nA, tbl%nB)
+    call read_matrix(trim(dir)//"/M_AB_45x45.dat", tbl%M_AB, tbl%nA, tbl%nB)
+    call read_matrix(trim(dir)//"/M_BB_45x45.dat", tbl%M_BB, tbl%nA, tbl%nB)
+
     open(newunit=unit, file=trim(dir)//"/safe_mask_45x45.dat", status="old", action="read")
     do i = 1, tbl%nA
        read(unit,*) (safe_int(i,j), j=1,tbl%nB)

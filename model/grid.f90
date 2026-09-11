@@ -11,6 +11,7 @@ program grid_model
     use timestep_control
     use convergence_control
     use run_single_fluid_mod
+    use run_binary_fluid_mod
 
     implicit none
 
@@ -97,14 +98,14 @@ program grid_model
                                rho_spline_file, M_spline_file, &
                                steady_tol, n_steady, output_dir)
     case (2)
-        ! call run_binary_fluid(block_size_x, block_size_y, block_size_z, &
-        !                        system_size_x, time_step, max_time_step, &
-        !                        left_muA, right_muA, inside_muA, &
-        !                        left_muB, right_muB, inside_muB, mu_mode, &
-        !                        n_iter, n_jump, check_interval, conv_tol, &
-        !                        tol_min, tol_max, growth_factor, &
-        !                        table2d_dir, &
-        !                        steady_tol, n_steady, output_dir)
+        call run_binary_fluid(block_size_x, block_size_y, block_size_z, &
+                               system_size_x, time_step, max_time_step, &
+                               left_muA, right_muA, inside_muA, &
+                               left_muB, right_muB, inside_muB, mu_mode, &
+                               n_iter, n_jump, check_interval, conv_tol, &
+                               tol_min, tol_max, growth_factor, &
+                               table2d_dir, &
+                               steady_tol, n_steady, output_dir)
     case default
         write(*,*) "Unknown fluid_mode =", fluid_mode, " (must be 1 or 2)"
         stop 1

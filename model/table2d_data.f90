@@ -17,6 +17,11 @@ module table2d_data
      real(8), allocatable :: dB_dA(:,:)      ! d(rhoB)/d(muA)
      real(8), allocatable :: dB_dB(:,:)      ! d(rhoB)/d(muB)
 
+     ! Onsager mobility matrix fields, symmetric: MAB == MBA
+     real(8), allocatable :: M_AA(:,:)
+     real(8), allocatable :: M_AB(:,:)   ! = M_BA(:,:)
+     real(8), allocatable :: M_BB(:,:)
+
      logical, allocatable :: safe(:,:)
   end type table2d_t
 
