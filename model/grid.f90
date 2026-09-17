@@ -55,7 +55,7 @@ program grid_model
     ! Set defaults (fallback if grid.in doesn't define them)
 
     ! Choose between single-phase fluid and two-phase fluid 
-    fluid_mode = 1   ! default: keep old behavior if not specified
+    fluid_mode = 1
 
     ! --- Geometry ---
     block_size_x = 1d-9         ! m
@@ -115,6 +115,7 @@ program grid_model
 
     select case (fluid_mode)
     case (1)
+        write(*,*) "run_single_fluid="
         call run_single_fluid(block_size_x, block_size_y, block_size_z, &
                                system_size_x, time_step, max_time_step, &
                                left_mu, right_mu, inside_mu, mu_mode, &
@@ -123,6 +124,7 @@ program grid_model
                                rho_spline_file, M_spline_file, &
                                steady_tol, n_steady, output_dir)
     case (2)
+        write(*,*) "run_binary_fluid="
         call run_binary_fluid(block_size_x, block_size_y, block_size_z, &
                                system_size_x, time_step, max_time_step, &
                                left_muA, right_muA, inside_muA, &

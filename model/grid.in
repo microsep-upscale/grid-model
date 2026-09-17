@@ -36,16 +36,7 @@ rho_spline_file = "../data/single-phase/lj-T300/h1.0/spline_rho_vs_mu.txt"
 M_spline_file = "../data/single-phase/lj-T300/h1.0/spline_M_vs_mu.txt"
 
 ! Binary fluid
-! table2d_dir points at the actual reconstructed EOS data —
-! confirmed to contain muA_45x45.dat, muB_45x45.dat,
-! rhoA/rhoB_reconstructed_LS_45x45.dat, p_reconstructed_LS_45x45.dat,
-! f_reconstructed_LS_45x45.dat, and safe_mask_45x45.dat.
 table2d_dir = "../data/two-phase/lj-slit"
-! MA/MB spline files do NOT exist yet in that directory — this path
-! is a deliberate placeholder so load_spline fails loudly rather than
-! silently reading nothing, until those splines are generated.
-MA_spline_file = "../data/two-phase/lj-slit/spline_MA_vs_muA.txt"
-MB_spline_file = "../data/two-phase/lj-slit/spline_MB_vs_muB.txt"
 
 ! --- Output ---
 output_dir = "output_0.1"   ! directory for logs, conservation.dat, and profile files
