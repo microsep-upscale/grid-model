@@ -39,7 +39,7 @@ program grid_model
     ! --- binary-fluid boundary conditions ---
     real(8) :: left_muA, right_muA, inside_muA
     real(8) :: left_muB, right_muB, inside_muB
-    character(len=256) :: rhoA_matrix, rhoB_matrix, muA_array, muB_array
+    character(len=256) :: rhoA_matrix_path, rhoB_matrix_path, muA_array_path, muB_array_path
 
     ! Declare a namelist and give the variables defaults
     namelist /params/ fluid_mode, &
@@ -50,7 +50,7 @@ program grid_model
                     left_mu, right_mu, inside_mu, rho_spline_file, M_spline_file, &
                     left_muA, right_muA, inside_muA, &
                     left_muB, right_muB, inside_muB, &
-                    rhoA_matrix, rhoB_matrix, muA_array, muB_array
+                    rhoA_matrix_path, rhoB_matrix_path, muA_array_path, muB_array_path
 
     ! Set defaults (fallback if grid.in doesn't define them)
 
@@ -102,10 +102,10 @@ program grid_model
     left_muB   = -9.5d0
     inside_muB = -11d0
     right_muB  = -13.0d0
-    rhoA_matrix = "../data/two-phase/lj-slit/rhoA_9x9.dat"
-    rhoB_matrix = "../data/two-phase/lj-slit/rhoB_9x9.dat"
-    muA_array = "../data/two-phase/lj-slit/muA_unique.dat"
-    muB_array = "../data/two-phase/lj-slit/muA_unique.dat"
+    rhoA_matrix_path = "../data/two-phase/lj-slit/rhoA_9x9.dat"
+    rhoB_matrix_path = "../data/two-phase/lj-slit/rhoB_9x9.dat"
+    muA_array_path = "../data/two-phase/lj-slit/muA_unique.dat"
+    muB_array_path = "../data/two-phase/lj-slit/muA_unique.dat"
 
     open(newunit=input_unit, file="grid.in", status="old", action="read")
     read(input_unit, nml=params, iostat=ios)
@@ -134,7 +134,7 @@ program grid_model
                                left_muB, right_muB, inside_muB, mu_mode, &
                                n_iter, n_jump, check_interval, conv_tol, &
                                tol_min, tol_max, growth_factor, &
-                               rhoA_matrix, rhoB_matrix, muA_array, muB_array, &
+                               rhoA_matrix_path, rhoB_matrix_path, muA_array_path, muB_array_path, &
                                steady_tol, n_steady, output_dir)
     case default
         write(*,*) "Unknown fluid_mode =", fluid_mode, " (must be 1 or 2)"

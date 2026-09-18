@@ -5,6 +5,75 @@ module table2d_io
 
 contains
 
+    subroutine read_2d_grid(filename, grid)
+        character(len=*), intent(in) :: filename
+        real(8), allocatable, intent(out) :: grid(:,:)
+        integer :: i, j, n_rows, n_cols, ios, temp_unit
+
+        ! Open the file
+        open(newunit=temp_unit, file=filename, status="old", action="read", iostat=ios)
+        if (ios /= 0) then
+            write(*,*) "Error: Could not open file ", trim(filename)
+            stop 1
+        end if
+
+        ! Count the number of rows
+        n_rows = 0
+        do
+            read(temp_unit, *, iostat=ios)
+            if (ios < 0) exit
+            if (ios > 0) cycle
+            n_rows = n_rows + 1
+        end do
+        rewind(temp_unit)
+
+        n_cols = 9  ! Hardcoded — adjust if grid shape changes
+
+        ! Allocate the grid
+        allocate(grid(n_rows, n_cols))
+
+        ! Read the data
+        do i = 1, n_rows
+            read(temp_unit, *, iostat=ios) (grid(i, j), j = 1, n_cols)
+            if (ios /= 0) then
+                write(*,*) "Error: Failed to read row ", i, " in ", trim(filename)
+                stop 1
+            end if
+        end do
+
+        close(temp_unit)
+    end subroutine read_2d_grid
+
+    subroutine read_1d_array(filename, array)
+        character(len=*), intent(in) :: filename
+        real(8), allocatable, intent(out) :: array(:)
+        integer :: n, ios
+        real(8), allocatable :: temp_array(:)
+
+        ! Open the file
+        open(unit=10, file=filename, status="old", action="read", iostat=ios)
+        if (ios /= 0) then
+            print *, "Error opening file: ", filename
+            stop 1
+        end if
+
+        ! Count the number of lines
+        n = 0
+        do
+            read(10, *, iostat=ios)
+            if (ios /= 0) exit
+            n = n + 1
+        end do
+        rewind(10)
+
+        ! Allocate the array
+        allocate(array(n))
+
+        ! Read the data
+        read(10, *) array
+        close(10)
+    end subroutine read_1d_array
+
   subroutine load_table2d(dir, tbl)
     implicit none
     character(len=*), intent(in)  :: dir

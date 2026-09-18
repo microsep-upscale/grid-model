@@ -36,10 +36,10 @@ rho_spline_file = "../data/single-phase/lj-T300/h1.0/spline_rho_vs_mu.txt"
 M_spline_file = "../data/single-phase/lj-T300/h1.0/spline_M_vs_mu.txt"
 
 ! Binary fluid
-rhoA_matrix = "../data/two-phase/lj-slit/rhoA_9x9.dat"
-rhoB_matrix = "../data/two-phase/lj-slit/rhoB_9x9.dat"
-muA_array = "../data/two-phase/lj-slit/muA_unique.dat"
-muB_array = "../data/two-phase/lj-slit/muA_unique.dat"
+rhoA_matrix_path = "../data/two-phase/lj-slit/rhoA_9x9.dat"
+rhoB_matrix_path = "../data/two-phase/lj-slit/rhoB_9x9.dat"
+muA_array_path = "../data/two-phase/lj-slit/muA_unique.dat"
+muB_array_path = "../data/two-phase/lj-slit/muA_unique.dat"
 
 ! --- Output ---
 output_dir = "output_0.1"   ! directory for logs, conservation.dat, and profile files

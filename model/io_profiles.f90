@@ -2,23 +2,41 @@ module io_profiles
   implicit none
 contains
 
-  subroutine write_profile(filename, x_axis, field, n, scale_x, header)
-    implicit none
-    character(len=*), intent(in) :: filename
-    character(len=*), intent(in) :: header
-    integer,          intent(in) :: n
-    real(8),          intent(in) :: x_axis(n)
-    real(8),          intent(in) :: field(n)
-    real(8),          intent(in) :: scale_x
-    integer :: i, unit
+    subroutine write_grid2d(filename, grid, header)
+        implicit none
+        character(len=*), intent(in) :: filename
+        real(8), intent(in) :: grid(:,:)
+        character(len=*), intent(in), optional :: header
+        integer :: i, j, unit, n_rows, n_cols
 
-    open(newunit=unit, file=filename, status="replace", action="write")
-    write(unit,*) header
-    do i = 1, n
-      write(unit,'(2ES20.10)') x_axis(i)*scale_x, field(i)
-    end do
-    close(unit)
-  end subroutine write_profile
+        n_rows = size(grid, 1)
+        n_cols = size(grid, 2)
+
+        open(newunit=unit, file=filename, status="replace", action="write")
+        if (present(header)) write(unit,*) trim(header)
+        do i = 1, n_rows
+            write(unit,'(*(ES16.8))') (grid(i, j), j = 1, n_cols)
+        end do
+        close(unit)
+    end subroutine write_grid2d
+
+    subroutine write_profile(filename, x_axis, field, n, scale_x, header)
+        implicit none
+        character(len=*), intent(in) :: filename
+        character(len=*), intent(in) :: header
+        integer,          intent(in) :: n
+        real(8),          intent(in) :: x_axis(n)
+        real(8),          intent(in) :: field(n)
+        real(8),          intent(in) :: scale_x
+        integer :: i, unit
+
+        open(newunit=unit, file=filename, status="replace", action="write")
+        write(unit,*) header
+        do i = 1, n
+        write(unit,'(2ES20.10)') x_axis(i)*scale_x, field(i)
+        end do
+        close(unit)
+    end subroutine write_profile
 
     subroutine write_profiles(iter, time, block_centers, block_edges, chemical_potential, fluid_density, &
                             permeability, flux_edges, grad_mu, number_block, number_edge, output_dir, label)

@@ -6,6 +6,8 @@ module run_binary_fluid_mod
     use init_profiles
     use timestep_control
     use convergence_control
+    use numerical_gradient
+    use density_interpolation
 
     implicit none
     private
@@ -39,8 +41,58 @@ contains
         integer, intent(in) :: n_steady
         character(len=*), intent(in) :: output_dir
 
+        integer :: i, j
 
+        ! Inside run_binary_fluid:
+        integer, parameter :: multiplication = 5
+        real(8), allocatable :: muA_fine(:), muB_fine(:)
+        real(8), allocatable :: rhoA_fine(:,:), rhoB_fine(:,:)
+        real(8), allocatable :: muA_values(:), muB_values(:)
+        real(8), allocatable :: rhoA_grid(:,:), rhoB_grid(:,:)
 
+        real(8), allocatable :: rhoA_log_fine(:,:), rhoB_log_fine(:,:)
+        real(8), allocatable :: dlogrhoA_dmuA(:,:), dlogrhoA_dmuB(:,:)
+        real(8), allocatable :: dlogrhoB_dmuA(:,:), dlogrhoB_dmuB(:,:)
+        real(8), allocatable :: drhoA_dmuA(:,:), drhoA_dmuB(:,:)
+        real(8), allocatable :: drhoB_dmuA(:,:), drhoB_dmuB(:,:)
+
+        ! Read muA_values, muB_values, rhoA_grid, rhoB_grid from files
+        call read_2d_grid(rhoA_matrix, rhoA_grid)
+        call read_2d_grid(rhoB_matrix, rhoB_grid)
+        call read_1d_array(muA_array, muA_values)
+        call read_1d_array(muB_array, muB_values)
+
+        ! Print rhoA_grid (9x9)
+        if (.not. allocated(rhoA_grid) .or. size(rhoA_grid) == 0) then
+            write(*,*) "Error: rhoA_grid is empty"
+            stop 1
+        end if
+
+        ! Print rhoB_grid (9x9)
+        if (.not. allocated(rhoB_grid) .or. size(rhoB_grid) == 0) then
+            write(*,*) "Error: rhoB_grid is empty"
+            stop 1
+        end if
+
+        ! Interpolate
+        call interpolate_density_grids(muA_values, muB_values, rhoA_grid, rhoB_grid, &
+                                    multiplication, muA_fine, muB_fine, rhoA_fine, &
+                                    rhoB_fine, output_dir)
+
+        allocate(rhoA_log_fine, source=log(rhoA_fine))
+        allocate(rhoB_log_fine, source=log(rhoB_fine))
+        allocate(dlogrhoA_dmuA(size(muA_fine), size(muB_fine)))
+        allocate(dlogrhoA_dmuB(size(muA_fine), size(muB_fine)))
+        allocate(dlogrhoB_dmuA(size(muA_fine), size(muB_fine)))
+        allocate(dlogrhoB_dmuB(size(muA_fine), size(muB_fine)))
+
+        call gradient_2d(rhoA_log_fine, muA_fine, muB_fine, dlogrhoA_dmuA, dlogrhoA_dmuB)
+        call gradient_2d(rhoB_log_fine, muA_fine, muB_fine, dlogrhoB_dmuA, dlogrhoB_dmuB)
+
+        allocate(drhoA_dmuA, source=rhoA_fine*dlogrhoA_dmuA)
+        allocate(drhoA_dmuB, source=rhoA_fine*dlogrhoA_dmuB)
+        allocate(drhoB_dmuA, source=rhoB_fine*dlogrhoB_dmuA)
+        allocate(drhoB_dmuB, source=rhoB_fine*dlogrhoB_dmuB)
 
 
         ! ! ---- local state ----
@@ -336,62 +388,62 @@ contains
 
     end subroutine run_binary_fluid
 
-    ! ------------------------------------------------------------
-    ! Minimal profile writer for the two-species case. Mirrors the
-    ! layout of io_profiles::write_profiles but with muA/muB and
-    ! rhoA/rhoB side by side instead of a single mu/rho column.
-    ! Replace with a proper io_profiles_binary module if this needs
-    ! to match existing post-processing scripts.
-    ! ------------------------------------------------------------
-    subroutine write_profiles_binary(snap_index, time, block_centers, block_edges, &
-                                      muA_field, muB_field, rhoA_field, rhoB_field, &
-                                      mAA_block, mAB_block, mBB_block, &
-                                      flux_edges_A, flux_edges_B, &
-                                      grad_muA, grad_muB, &
-                                      number_block, number_edge, output_dir, label)
-        implicit none
-        integer, intent(in) :: snap_index, number_block, number_edge
-        real(8), intent(in) :: time
-        real(8), intent(in) :: block_centers(number_block), block_edges(number_edge)
-        real(8), intent(in) :: muA_field(number_block), muB_field(number_block)
-        real(8), intent(in) :: rhoA_field(number_block), rhoB_field(number_block)
-        real(8), intent(in) :: mAA_block(number_block), mAB_block(number_block), mBB_block(number_block)
-        real(8), intent(in) :: flux_edges_A(number_edge), flux_edges_B(number_edge)
-        real(8), intent(in) :: grad_muA(number_edge), grad_muB(number_edge)
-        character(len=*), intent(in) :: output_dir
-        character(len=*), intent(in), optional :: label
+    ! ! ------------------------------------------------------------
+    ! ! Minimal profile writer for the two-species case. Mirrors the
+    ! ! layout of io_profiles::write_profiles but with muA/muB and
+    ! ! rhoA/rhoB side by side instead of a single mu/rho column.
+    ! ! Replace with a proper io_profiles_binary module if this needs
+    ! ! to match existing post-processing scripts.
+    ! ! ------------------------------------------------------------
+    ! subroutine write_profiles_binary(snap_index, time, block_centers, block_edges, &
+    !                                   muA_field, muB_field, rhoA_field, rhoB_field, &
+    !                                   mAA_block, mAB_block, mBB_block, &
+    !                                   flux_edges_A, flux_edges_B, &
+    !                                   grad_muA, grad_muB, &
+    !                                   number_block, number_edge, output_dir, label)
+    !     implicit none
+    !     integer, intent(in) :: snap_index, number_block, number_edge
+    !     real(8), intent(in) :: time
+    !     real(8), intent(in) :: block_centers(number_block), block_edges(number_edge)
+    !     real(8), intent(in) :: muA_field(number_block), muB_field(number_block)
+    !     real(8), intent(in) :: rhoA_field(number_block), rhoB_field(number_block)
+    !     real(8), intent(in) :: mAA_block(number_block), mAB_block(number_block), mBB_block(number_block)
+    !     real(8), intent(in) :: flux_edges_A(number_edge), flux_edges_B(number_edge)
+    !     real(8), intent(in) :: grad_muA(number_edge), grad_muB(number_edge)
+    !     character(len=*), intent(in) :: output_dir
+    !     character(len=*), intent(in), optional :: label
 
-        integer :: unit, i
-        character(len=256) :: filename
-        character(len=32)  :: tag
+    !     integer :: unit, i
+    !     character(len=256) :: filename
+    !     character(len=32)  :: tag
 
-        if (present(label)) then
-            tag = trim(label)
-        else
-            write(tag,'(I0)') snap_index
-        end if
+    !     if (present(label)) then
+    !         tag = trim(label)
+    !     else
+    !         write(tag,'(I0)') snap_index
+    !     end if
 
-        filename = trim(output_dir)//"/profile_block_"//trim(tag)//".dat"
-        open(newunit=unit, file=trim(filename), status="replace", action="write")
-        write(unit,*) "# time =", time, " s"
-        write(unit,*) "# x[m]  muA[J/mol]  muB[J/mol]  rhoA[m^-3]  rhoB[m^-3]  M_AA  M_AB  M_BB"
-        do i = 1, number_block
-            write(unit,'(8ES16.8)') block_centers(i), muA_field(i), muB_field(i), &
-                                     rhoA_field(i), rhoB_field(i), &
-                                     mAA_block(i), mAB_block(i), mBB_block(i)
-        end do
-        close(unit)
+    !     filename = trim(output_dir)//"/profile_block_"//trim(tag)//".dat"
+    !     open(newunit=unit, file=trim(filename), status="replace", action="write")
+    !     write(unit,*) "# time =", time, " s"
+    !     write(unit,*) "# x[m]  muA[J/mol]  muB[J/mol]  rhoA[m^-3]  rhoB[m^-3]  M_AA  M_AB  M_BB"
+    !     do i = 1, number_block
+    !         write(unit,'(8ES16.8)') block_centers(i), muA_field(i), muB_field(i), &
+    !                                  rhoA_field(i), rhoB_field(i), &
+    !                                  mAA_block(i), mAB_block(i), mBB_block(i)
+    !     end do
+    !     close(unit)
 
-        filename = trim(output_dir)//"/profile_edge_"//trim(tag)//".dat"
-        open(newunit=unit, file=trim(filename), status="replace", action="write")
-        write(unit,*) "# time =", time, " s"
-        write(unit,*) "# x[m]  grad_muA  grad_muB  flux_A[1/s]  flux_B[1/s]"
-        do i = 1, number_edge
-            write(unit,'(5ES16.8)') block_edges(i), grad_muA(i), grad_muB(i), &
-                                     flux_edges_A(i), flux_edges_B(i)
-        end do
-        close(unit)
+    !     filename = trim(output_dir)//"/profile_edge_"//trim(tag)//".dat"
+    !     open(newunit=unit, file=trim(filename), status="replace", action="write")
+    !     write(unit,*) "# time =", time, " s"
+    !     write(unit,*) "# x[m]  grad_muA  grad_muB  flux_A[1/s]  flux_B[1/s]"
+    !     do i = 1, number_edge
+    !         write(unit,'(5ES16.8)') block_edges(i), grad_muA(i), grad_muB(i), &
+    !                                  flux_edges_A(i), flux_edges_B(i)
+    !     end do
+    !     close(unit)
 
-    end subroutine write_profiles_binary
+    ! end subroutine write_profiles_binary
 
 end module run_binary_fluid_mod
