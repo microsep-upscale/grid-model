@@ -5,6 +5,7 @@ module run_binary_fluid_mod
     use table2d_eval
     use io_profiles
     use init_profiles
+    use free_energy
     use timestep_control
     use convergence_control
     use numerical_gradient
@@ -52,7 +53,7 @@ contains
         real(8), allocatable :: muA_values(:), muB_values(:)
         real(8), allocatable :: rhoA_grid(:,:), rhoB_grid(:,:)
         real(8), allocatable :: p_fine(:,:), p_alt(:,:), p_avg(:,:)
-
+        real(8), allocatable :: f_fine(:,:)
         real(8), allocatable :: rhoA_log_fine(:,:), rhoB_log_fine(:,:)
         real(8), allocatable :: dlogrhoA_dmuA(:,:), dlogrhoA_dmuB(:,:)
         real(8), allocatable :: dlogrhoB_dmuA(:,:), dlogrhoB_dmuB(:,:)
@@ -104,6 +105,9 @@ contains
 
         call compute_pressure_fields(muA_fine, muB_fine, rhoA_fine, rhoB_fine, &
             p_fine, p_alt, p_avg, output_dir)
+
+        call compute_free_energy_field(muA_fine, muB_fine, rhoA_fine, rhoB_fine, &
+                                            p_fine, f_fine, output_dir)
 
     end subroutine run_binary_fluid
 
