@@ -9,6 +9,7 @@ module run_binary_fluid_mod
     use timestep_control
     use convergence_control
     use numerical_gradient
+    use mu_rho_inversion
     use pressure_integration
     use density_interpolation
 
@@ -59,6 +60,7 @@ contains
         real(8), allocatable :: dlogrhoB_dmuA(:,:), dlogrhoB_dmuB(:,:)
         real(8), allocatable :: drhoA_dmuA(:,:), drhoA_dmuB(:,:)
         real(8), allocatable :: drhoB_dmuA(:,:), drhoB_dmuB(:,:)
+        real(8), allocatable :: rhoA_log_grid(:,:), rhoB_log_grid(:,:)
 
         ! Read muA_values, muB_values, rhoA_grid, rhoB_grid from files
         call read_2d_grid(rhoA_matrix, rhoA_grid)
@@ -89,6 +91,8 @@ contains
         allocate(dlogrhoA_dmuB(size(muA_fine), size(muB_fine)))
         allocate(dlogrhoB_dmuA(size(muA_fine), size(muB_fine)))
         allocate(dlogrhoB_dmuB(size(muA_fine), size(muB_fine)))
+        allocate(rhoA_log_grid, source=log(rhoA_grid))
+        allocate(rhoB_log_grid, source=log(rhoB_grid))
 
         call gradient_2d(rhoA_log_fine, muA_fine, muB_fine, dlogrhoA_dmuA, dlogrhoA_dmuB)
         call gradient_2d(rhoB_log_fine, muA_fine, muB_fine, dlogrhoB_dmuA, dlogrhoB_dmuB)
@@ -108,6 +112,9 @@ contains
 
         call compute_free_energy_field(muA_fine, muB_fine, rhoA_fine, rhoB_fine, &
                                             p_fine, f_fine, output_dir)
+
+        call invert_mu_grid_validate(muA_values, muB_values, rhoA_log_grid, rhoB_log_grid, &
+                                    muA_fine, muB_fine, rhoA_fine, rhoB_fine, output_dir)
 
     end subroutine run_binary_fluid
 

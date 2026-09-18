@@ -27,6 +27,7 @@ $FC $FCFLAGS -c free_energy.f90
 $FC $FCFLAGS -c numerical_gradient.f90
 $FC $FCFLAGS -c density_interpolation.f90
 $FC $FCFLAGS -c pressure_integration.f90
+$FC $FCFLAGS -c mu_rho_inversion.f90
 $FC $FCFLAGS -c run_single_fluid_mod.f90
 $FC $FCFLAGS -c run_binary_fluid_mod.f90
 $FC $FCFLAGS -c grid.f90
@@ -34,5 +35,5 @@ $FC $FCFLAGS -c grid.f90
 # link
 $FC coeff_io.o poly_fit.o io_profiles.o init_profiles.o tables_io.o spline_io.o spline_eval.o spline_data.o \
 table2d_data.o table2d_eval.o table2d_io.o density_interpolation.o free_energy.o \
-grid.o timestep_control.o run_single_fluid_mod.o pressure_integration.o numerical_gradient.o \
+grid.o timestep_control.o run_single_fluid_mod.o mu_rho_inversion.o pressure_integration.o numerical_gradient.o \
 run_binary_fluid_mod.o convergence_control.o -o grid

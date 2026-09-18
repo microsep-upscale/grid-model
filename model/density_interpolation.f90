@@ -6,7 +6,7 @@ module density_interpolation
     implicit none
 
     private
-    public :: interpolate_density_grids
+    public :: interpolate_density_grids, bicubic_eval_point
 
 contains
 
@@ -195,5 +195,32 @@ contains
         yq = a*ya(klo) + b*ya(khi) + &
              ((a**3 - a)*y2a(klo) + (b**3 - b)*y2a(khi)) * (h**2) / 6d0
     end subroutine spline_eval1
+
+    ! Evaluate the bicubic-spline surface at a single arbitrary point.
+    ! x,y: coarse grid (muA_values/muB_values); z: coarse grid values (e.g. log(rho)).
+    function bicubic_eval_point(x, y, z, xq, yq) result(zq)
+        implicit none
+        real(8), intent(in) :: x(:), y(:), z(:,:)
+        real(8), intent(in) :: xq, yq
+        real(8) :: zq
+
+        integer :: n_x, n_y, i
+        real(8), allocatable :: tmp(:), tmp_y2(:), row_y2(:)
+
+        n_x = size(x)
+        n_y = size(y)
+
+        allocate(tmp(n_x), tmp_y2(n_x), row_y2(n_y))
+
+        do i = 1, n_x
+            call spline_coeffs(y, z(i,:), n_y, row_y2)
+            call spline_eval1(y, z(i,:), row_y2, n_y, yq, tmp(i))
+        end do
+
+        call spline_coeffs(x, tmp, n_x, tmp_y2)
+        call spline_eval1(x, tmp, tmp_y2, n_x, xq, zq)
+
+        deallocate(tmp, tmp_y2, row_y2)
+    end function bicubic_eval_point
 
 end module density_interpolation
