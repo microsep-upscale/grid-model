@@ -3,6 +3,7 @@ module run_binary_fluid_mod
     use table2d_data
     use table2d_io
     use table2d_eval
+    use io_profiles
     use init_profiles
     use timestep_control
     use convergence_control
@@ -93,6 +94,11 @@ contains
         allocate(drhoA_dmuB, source=rhoA_fine*dlogrhoA_dmuB)
         allocate(drhoB_dmuA, source=rhoB_fine*dlogrhoB_dmuA)
         allocate(drhoB_dmuB, source=rhoB_fine*dlogrhoB_dmuB)
+
+        call write_grid2d(trim(output_dir)//"/drhoA_dmuA_grid.dat", drhoA_dmuA, "# Calculated drhoA_dmuA")
+        call write_grid2d(trim(output_dir)//"/drhoB_dmuA_grid.dat", drhoB_dmuA, "# Calculated drhoB_dmuA")
+        call write_grid2d(trim(output_dir)//"/drhoA_dmuB_grid.dat", drhoA_dmuB, "# Calculated drhoA_dmuB")
+        call write_grid2d(trim(output_dir)//"/drhoB_dmuB_grid.dat", drhoB_dmuB, "# Calculated drhoB_dmuB")
 
 
         ! ! ---- local state ----
